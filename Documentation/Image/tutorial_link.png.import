@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqdo215u7oo8j"
-path.s3tc="res://.godot/imported/tutorial_link.png-b3537b4351ee570ddf47dc5331aaa74d.s3tc.ctex"
+path.s3tc="res://.godot/imported/tutorial_link.png-8b82929da3e9ecb07aec567a65d8168e.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://addons/scene_builder/Documentation/Image/tutorial_link.png"
-dest_files=["res://.godot/imported/tutorial_link.png-b3537b4351ee570ddf47dc5331aaa74d.s3tc.ctex"]
+source_file="res://addons/scene-builder/Documentation/Image/tutorial_link.png"
+dest_files=["res://.godot/imported/tutorial_link.png-8b82929da3e9ecb07aec567a65d8168e.s3tc.ctex"]
 
 [params]
 

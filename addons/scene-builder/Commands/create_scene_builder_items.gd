@@ -3,7 +3,7 @@ extends EditorPlugin
 ## Creates Scene Builder items from selection on Editor.
 ## A Popup is created in which user can change creation settings.
 
-var path_root = "res://Data/SceneBuilderCollections/"
+var path_root = "res://Data/scene-builder/"
 
 var editor: EditorInterface
 var popup_instance: PopupPanel
@@ -91,8 +91,8 @@ func _on_ok_pressed():
 
 func _create_resource(path: String):
 	var scene_builder_item_path: String
-	var scene_builder_item_path1: String = "res://addons/SceneBuilder/scene_builder_item.gd"
-	var scene_builder_item_path2: String = "res://addons/SceneBuilder/addons/SceneBuilder/scene_builder_item.gd"
+	var scene_builder_item_path1: String = "res://addons/scene-builder/scene_builder_item.gd"
+	var scene_builder_item_path2: String = "res://addons/scene-builder/addons/scene-builder/scene_builder_item.gd"
 
 	if FileAccess.file_exists(scene_builder_item_path1):
 		scene_builder_item_path = scene_builder_item_path1

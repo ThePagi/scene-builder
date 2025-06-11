@@ -1049,7 +1049,7 @@ func start_transform_mode(mode: TransformMode) -> void:
 			lbl_indicator_scale.self_modulate = Color.GREEN
 
 func get_icon(collection_name: String, item_name: String) -> Texture:
-	var icon_path: String = "res://Data/SceneBuilderCollections/%s/Thumbnail/%s.png" % [collection_name, item_name]
+	var icon_path: String = "res://Data/scene-builder/%s/Thumbnail/%s.png" % [collection_name, item_name]
 	var tex: Texture = load(icon_path) as Texture
 	if tex == null:
 		printerr("[SceneBuilderDock] Icon not found: ", icon_path)
