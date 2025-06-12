@@ -11,6 +11,16 @@ var popup_instance: PopupPanel
 # Nodes
 var create_items: VBoxContainer
 var collection_line_edit: LineEdit
+var snapx: SpinBox
+var snapy: SpinBox
+var snapz: SpinBox
+var auto_snapx: CheckButton
+var auto_snapy: CheckButton
+var auto_snapz: CheckButton
+var snap_angle: SpinBox
+var snapx_offset: SpinBox
+var snapy_offset: SpinBox
+var snapz_offset: SpinBox
 var randomize_vertical_offset_checkbox: CheckButton
 var randomize_rotation_checkbox: CheckButton
 var randomize_scale_checkbox: CheckButton
@@ -50,6 +60,16 @@ func execute(root_dir: String):
 	popup_instance.add_child(create_items)
 
 	collection_line_edit = create_items.get_node("Collection/LineEdit")
+	snapx = create_items.get_node("SnapToGrid/x")
+	snapy = create_items.get_node("SnapToGrid/y")
+	snapz = create_items.get_node("SnapToGrid/z")
+	auto_snapx = create_items.get_node("SnapAuto/x")
+	auto_snapy = create_items.get_node("SnapAuto/y")
+	auto_snapz = create_items.get_node("SnapAuto/z")
+	snapx_offset = create_items.get_node("SnapOffset/x")
+	snapy_offset = create_items.get_node("SnapOffset/y")
+	snapz_offset = create_items.get_node("SnapOffset/z")
+	snap_angle = create_items.get_node("SnapToGrid/angle")
 	randomize_vertical_offset_checkbox = create_items.get_node("Boolean/VerticalOffset")
 	randomize_rotation_checkbox = create_items.get_node("Boolean/Rotation")
 	randomize_scale_checkbox = create_items.get_node("Boolean/Scale")
@@ -119,6 +139,9 @@ func _create_resource(path: String):
 			resource.collection_name = "Unnamed"
 		else:
 			resource.collection_name = collection_line_edit.text
+		resource.snap_to_grid = Vector3(snapx.value, snapy.value, snapz.value)
+		resource.snap_offset = Vector3(snapx_offset.value, snapy_offset.value, snapz_offset.value)
+		resource.snap_rotation = snap_angle.value
 		resource.use_random_vertical_offset = randomize_vertical_offset_checkbox.button_pressed
 		resource.use_random_rotation = randomize_rotation_checkbox.button_pressed
 		resource.use_random_scale = randomize_scale_checkbox.button_pressed
@@ -170,9 +193,17 @@ func _create_resource(path: String):
 
 		#endregion
 
+		if auto_snapx.button_pressed:
+			resource.snap_to_grid.x = aabb.size.x
+		if auto_snapy.button_pressed:
+			resource.snap_to_grid.y = aabb.size.y
+		if auto_snapz.button_pressed:
+			resource.snap_to_grid.z = aabb.size.z
 		var save_path: String = path_root + resource.collection_name + "/%s.tres" % resource.item_name
 		ResourceSaver.save(resource, save_path)
-
+		var fs = EditorInterface.get_resource_filesystem()
+		if not fs.is_scanning():
+			fs.scan()
 		print("[Create Scene Builder Items] Resource saved: " + save_path)
 
 func _create_directory_if_not_exists(path_to_directory: String) -> void:

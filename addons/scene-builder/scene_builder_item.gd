@@ -8,6 +8,12 @@ class_name SceneBuilderItem
 @export var texture: Texture
 @export var uid: String
 
+# per-item position+rotation snapping
+@export var snap_to_grid: Vector3
+# the "pivot" offset when placing the object
+@export var snap_offset: Vector3
+@export var snap_rotation: float
+
 # Boolean
 @export var use_random_vertical_offset: bool = false
 @export var use_random_rotation: bool = false

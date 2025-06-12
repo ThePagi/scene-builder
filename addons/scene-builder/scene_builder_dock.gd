@@ -98,6 +98,10 @@ var random_offset_y: float = 0
 var original_preview_scale: Vector3 = Vector3.ONE
 var scene_builder_temp: Node # Used as a parent to the preview item
 
+func snap(pos: Vector3) -> Vector3:
+	return (pos+selected_item.snap_offset).snapped(selected_item.snap_to_grid)
+func snap_rot(euler: Vector3) -> Vector3:
+	return euler.snapped(Vector3.ONE*deg_to_rad(selected_item.snap_rotation))
 # ---- Notifications -----------------------------------------------------------
 
 func _enter_tree() -> void:
@@ -206,7 +210,7 @@ func _process(_delta: float) -> void:
 					var new_position: Vector3 = result.position
 
 					new_position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
-
+					new_position = snap(new_position)
 					# This offset prevents z-fighting when placing overlapping quads
 					if selected_item.use_random_vertical_offset:
 						new_position.y += random_offset_y
@@ -273,8 +277,11 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 							if is_transform_mode_enabled():
 								# Confirm changes
-								original_preview_basis = preview_instance.basis
+								#original_preview_basis = preview_instance.basis
 								original_preview_scale = preview_instance.scale
+								original_preview_basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
+								original_preview_basis = original_preview_basis.scaled(preview_instance.basis.get_scale())
+								preview_instance.basis = original_preview_basis
 								end_transform_mode()
 								viewport.warp_mouse(original_mouse_position)
 							else:
@@ -301,7 +308,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 				if event.shift_pressed:
 
-					if event.keycode == KEY_1:
+					if event.keycode == config.x_axis:
 						
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.POSITION_X:
@@ -312,7 +319,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						else:
 							start_transform_mode(TransformMode.POSITION_X)
 
-					elif event.keycode == KEY_2:
+					elif event.keycode == config.y_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.POSITION_Y:
 								end_transform_mode()
@@ -322,7 +329,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						else:
 							start_transform_mode(TransformMode.POSITION_Y)
 
-					elif event.keycode == KEY_3:
+					elif event.keycode == config.z_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.POSITION_Z:
 								end_transform_mode()
@@ -334,7 +341,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 				else:
 
-					if event.keycode == KEY_1:
+					if event.keycode == config.x_axis:
 						
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.ROTATION_X:
@@ -345,7 +352,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						else:
 							start_transform_mode(TransformMode.ROTATION_X)
 
-					elif event.keycode == KEY_2:
+					elif event.keycode == config.y_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.ROTATION_Y:
 								end_transform_mode()
@@ -355,7 +362,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						else:
 							start_transform_mode(TransformMode.ROTATION_Y)
 
-					elif event.keycode == KEY_3:
+					elif event.keycode == config.z_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.ROTATION_Z:
 								end_transform_mode()
@@ -726,6 +733,7 @@ func instantiate_selected_item_at_position() -> void:
 		initialize_node_name(instance, selected_item.item_name)
 
 		var new_position: Vector3 = result.position
+		new_position = snap(new_position)
 		if selected_item.use_random_vertical_offset:
 			new_position.y += random_offset_y
 
@@ -733,12 +741,13 @@ func instantiate_selected_item_at_position() -> void:
 		instance.position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
 		print("[SceneBuilderDock] pos_offset_y: ", pos_offset_y)
 		instance.basis = preview_instance.basis
-
+		instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
+		instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
 		undo_redo.create_action("Instantiate selected item")
 		undo_redo.add_undo_method(scene_root, "remove_child", instance)
 		undo_redo.add_do_reference(instance)
 		undo_redo.commit_action()
-
+		reroll_preview_instance_transform()
 	else:
 		print("[SceneBuilderDock] Raycast missed, items must be instantiated on a StaticBody with a CollisionShape")
 
@@ -952,7 +961,7 @@ func reroll_preview_instance_transform() -> void:
 		var x_rot: float = rng.randf_range(0, selected_item.random_rot_x)
 		var y_rot: float = rng.randf_range(0, selected_item.random_rot_y)
 		var z_rot: float = rng.randf_range(0, selected_item.random_rot_z)
-		preview_instance.rotation = Vector3(deg_to_rad(x_rot), deg_to_rad(y_rot), deg_to_rad(z_rot))
+		preview_instance.rotation = snap_rot(Vector3(deg_to_rad(x_rot), deg_to_rad(y_rot), deg_to_rad(z_rot)))
 		original_preview_basis = preview_instance.basis
 	else:
 		preview_instance.rotation = Vector3(0, 0, 0)
