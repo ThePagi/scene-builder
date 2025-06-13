@@ -1,16 +1,27 @@
-[gd_scene load_steps=2 format=3 uid="uid://gea6yaqoucvf"]
+[gd_scene load_steps=4 format=3 uid="uid://gea6yaqoucvf"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_dpp4n"]
+sky_top_color = Color(0.801, 0.89, 0.80545, 1)
+sky_horizon_color = Color(0.5, 0.5, 0.5, 1)
+sky_curve = 1.24232
+ground_bottom_color = Color(0.0431373, 0.0431373, 0.105882, 1)
+ground_horizon_color = Color(0.5, 0.5, 0.5, 1)
+ground_curve = 0.109283
+
+[sub_resource type="Sky" id="Sky_u836s"]
+sky_material = SubResource("ProceduralSkyMaterial_dpp4n")
 
 [sub_resource type="Environment" id="Environment_tc7kr"]
-background_color = Color(0, 0, 0, 0)
+background_mode = 2
+sky = SubResource("Sky_u836s")
 ambient_light_source = 2
-ambient_light_color = Color(0.37792, 0.377919, 0.377919, 1)
+ambient_light_color = Color(0.197937, 0.197937, 0.197937, 1)
 tonemap_mode = 2
 ssao_radius = 4.76
 ssao_intensity = 16.0
 fog_density = 0.2126
 
 [node name="IconStudio" type="SubViewport"]
-transparent_bg = true
 msaa_3d = 2
 size = Vector2i(96, 96)
 render_target_update_mode = 4
@@ -20,6 +31,14 @@ environment = SubResource("Environment_tc7kr")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.5, 0.612372, -0.612372, 0, 0.707107, 0.707106, 0.866026, 0.353553, -0.353553, 0, 0, 0)
+light_color = Color(1, 0.960784, 0.960784, 1)
+light_energy = 0.5
+shadow_enabled = true
+
+[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.129409, -0.52452, -0.841506, 0.482966, 0.774517, -0.408493, 0.866025, -0.353554, 0.353554, 0, 0, 0)
+light_color = Color(0.921569, 1, 1, 1)
+light_energy = 0.5
 shadow_enabled = true
 
 [node name="CameraRoot" type="Node3D" parent="."]
