@@ -175,10 +175,10 @@ func _create_resource(path: String):
 		print("[Create Scene Builder Items] Subject AABB: ", aabb)
 		var center = aabb.get_center()
 		print("[Create Scene Builder Items] Subject center: ", center)
-		camera_root.position = center
+		subject.position -= center
 		# Using 120% of longest axis for cases where the subject gets too close to camera
-		studio_camera.position = Vector3(0, 0, aabb.get_longest_axis_size() * 1.2)
-
+		studio_camera.position = Vector3(0, 0, aabb.get_longest_axis_size()*1.2)
+		studio_camera.size = aabb.get_longest_axis_size()
 		await get_tree().process_frame
 		await get_tree().process_frame
 
@@ -189,7 +189,7 @@ func _create_resource(path: String):
 		resource.texture = tex
 
 		await get_tree().process_frame
-		subject.queue_free()
+		subject.free()
 
 		#endregion
 
@@ -202,8 +202,9 @@ func _create_resource(path: String):
 		var save_path: String = path_root + resource.collection_name + "/%s.tres" % resource.item_name
 		ResourceSaver.save(resource, save_path)
 		var fs = EditorInterface.get_resource_filesystem()
-		if not fs.is_scanning():
-			fs.scan()
+		fs.update_file(save_path)
+		fs.scan()
+		
 		print("[Create Scene Builder Items] Resource saved: " + save_path)
 
 func _create_directory_if_not_exists(path_to_directory: String) -> void:

@@ -197,7 +197,7 @@ func _process(_delta: float) -> void:
 			print("[SceneBuilderDock] Scene root invalid, ending placement mode")
 			end_placement_mode()
 			return
-
+		
 		if !is_transform_mode_enabled():
 			if preview_instance:
 				populate_preview_instance_rid_array(preview_instance)
@@ -223,7 +223,6 @@ func _process(_delta: float) -> void:
 							quaternion = quaternion * Quaternion(Vector3(1, 0, 0), deg_to_rad(90))
 						elif btn_surface_normal_z.button_pressed:
 							quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
-
 func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput:
 	if event is InputEventMouseMotion:
 		if placement_mode_enabled:
@@ -267,7 +266,6 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 	if event is InputEventMouseButton:
 		if event.is_pressed() and !event.is_echo():
-
 			if placement_mode_enabled:
 				var mouse_pos = viewport.get_mouse_position()
 				if mouse_pos.x >= 0 and mouse_pos.y >= 0:
@@ -286,7 +284,6 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								viewport.warp_mouse(original_mouse_position)
 							else:
 								instantiate_selected_item_at_position()
-
 							return EditorPlugin.AFTER_GUI_INPUT_STOP
 
 						elif event.button_index == MOUSE_BUTTON_RIGHT:
@@ -303,13 +300,9 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 	elif event is InputEventKey:
 		if event.is_pressed() and !event.is_echo():
-
 			if !event.alt_pressed and !event.ctrl_pressed:
-
 				if event.shift_pressed:
-
 					if event.keycode == config.x_axis:
-						
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.POSITION_X:
 								end_transform_mode()
@@ -318,7 +311,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.POSITION_X)
 						else:
 							start_transform_mode(TransformMode.POSITION_X)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == config.y_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.POSITION_Y:
@@ -328,7 +321,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.POSITION_Y)
 						else:
 							start_transform_mode(TransformMode.POSITION_Y)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == config.z_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.POSITION_Z:
@@ -338,9 +331,8 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.POSITION_Z)
 						else:
 							start_transform_mode(TransformMode.POSITION_Z)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 				else:
-
 					if event.keycode == config.x_axis:
 						
 						if is_transform_mode_enabled():
@@ -351,7 +343,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.ROTATION_X)
 						else:
 							start_transform_mode(TransformMode.ROTATION_X)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == config.y_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.ROTATION_Y:
@@ -361,7 +353,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.ROTATION_Y)
 						else:
 							start_transform_mode(TransformMode.ROTATION_Y)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == config.z_axis:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.ROTATION_Z:
@@ -371,7 +363,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.ROTATION_Z)
 						else:
 							start_transform_mode(TransformMode.ROTATION_Z)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == KEY_4:
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.SCALE:
@@ -381,28 +373,32 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								start_transform_mode(TransformMode.SCALE)
 						else:
 							start_transform_mode(TransformMode.SCALE)
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == KEY_5:
 						if is_transform_mode_enabled():
 							end_transform_mode()
 						reroll_preview_instance_transform()
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 				if event.keycode == KEY_ESCAPE:
 					end_placement_mode()
+					return EditorPlugin.AFTER_GUI_INPUT_STOP
 
 			if placement_mode_enabled:
 				if event.shift_pressed:
 					if event.keycode == KEY_LEFT:
 						select_previous_item()
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == KEY_RIGHT:
 						select_next_item()
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 
 				if event.alt_pressed:
 					if event.keycode == KEY_LEFT:
 						select_previous_collection()
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == KEY_RIGHT:
 						select_next_collection()
-
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
 	return EditorPlugin.AFTER_GUI_INPUT_PASS
 
 # ---- Buttons -----------------------------------------------------------------
