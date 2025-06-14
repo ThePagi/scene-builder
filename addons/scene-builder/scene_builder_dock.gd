@@ -9,7 +9,6 @@ var data_dir: String = ""
 var path_to_collection_names: String
 
 # Constants
-var num_collections: int = 24
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var toolbox: SceneBuilderToolbox = SceneBuilderToolbox.new()
@@ -21,7 +20,6 @@ var btn_use_local_space: Button
 
 # SceneBuilderDock controls
 var scene_builder_dock: VBoxContainer
-var tab_container: TabContainer
 var btns_collection_tabs: Array = [] # set in _enter_tree()
 var commands: SceneBuilderCommands
 # Options
@@ -58,17 +56,16 @@ var camera: Camera3D
 var scene_root: Node3D
 
 # Updated when reloading all collections
+var collections: CollectionNames
 var collection_names: Array[String] = []
-var items_by_collection: Dictionary = {} # A dictionary of dictionaries
-var ordered_keys_by_collection: Dictionary = {}
-var item_highlighters_by_collection: Dictionary = {}
+var collection_colors: Array[Color] = []
+
 # Also updated on tab button click
-var selected_collection: Dictionary = {}
-var selected_collection_name: String = ""
-var selected_collection_index: int = 0
+var selected_collection_id: int
+var items: Array[SceneBuilderItem] = []
+var highlighters: Array[NinePatchRect] = []
 # Also updated on item click
-var selected_item: SceneBuilderItem = null
-var selected_item_name: String = ""
+var selected_item_id: int
 var preview_instance: Node3D = null
 var preview_instance_rid_array: Array[RID] = []
 
@@ -101,9 +98,9 @@ var original_preview_scale: Vector3 = Vector3.ONE
 var scene_builder_temp: Node # Used as a parent to the preview item
 
 func snap(pos: Vector3) -> Vector3:
-	return (pos+selected_item.snap_offset).snapped(selected_item.snap_to_grid)
+	return (pos+items[selected_item_id].snap_offset).snapped(items[selected_item_id].snap_to_grid)
 func snap_rot(euler: Vector3) -> Vector3:
-	return euler.snapped(Vector3.ONE*deg_to_rad(selected_item.snap_rotation))
+	return euler.snapped(Vector3.ONE*deg_to_rad(items[selected_item_id].snap_rotation))
 func selected_parent()->Node3D:
 	var sel = EditorInterface.get_selection().get_selected_nodes()
 	if len(sel) == 0:
@@ -158,13 +155,9 @@ func _enter_tree() -> void:
 	scene_builder_dock = load(path).instantiate()
 	
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, scene_builder_dock)
-
 	# Collection tabs
-	tab_container = scene_builder_dock.get_node("Collection/TabContainer")
-	for i: int in range(num_collections):
-		var tab_button: Button = scene_builder_dock.get_node("Collection/Panel/Grid/%s" % str(i + 1))
-		tab_button.pressed.connect(select_collection.bind(i))
-		btns_collection_tabs.append(tab_button)
+	load_or_make_collections()
+
 
 	# Options tab
 	btn_use_surface_normal = scene_builder_dock.get_node("%UseSurfaceNormal")
@@ -220,7 +213,6 @@ func _exit_tree() -> void:
 	scene_builder_dock.queue_free()
 
 func _process(_delta: float) -> void:
-	
 	selected_parent()
 	# Update preview item position
 	if placement_mode_enabled:
@@ -244,7 +236,7 @@ func _process(_delta: float) -> void:
 					new_position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
 					new_position = snap(new_position)
 					# This offset prevents z-fighting when placing overlapping quads
-					if selected_item.use_random_vertical_offset:
+					if items[selected_item_id].use_random_vertical_offset:
 						new_position.y += random_offset_y
 
 					_instance.global_transform.origin = new_position
@@ -435,111 +427,58 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 # ---- Buttons -----------------------------------------------------------------
 
-func is_collection_populated(tab_index: int) -> bool:
-	var _collection_name: String = collection_names[tab_index]
-	if _collection_name == "" or _collection_name == " ":
-		return false
-	else:
-		if _collection_name in items_by_collection:
-			var _items: Dictionary = items_by_collection[_collection_name]
-			if _items.is_empty():
-				return false
-			else:
-				return true
-		else:
-			return false
 
 func select_collection(tab_index: int) -> void:
-	if collection_names.size() == 0:
-		print("[SceneBuilderDock] Unable to select collection, none exist")
-		return
-
 	end_placement_mode()
+	
+	for c in scene_builder_dock.get_node("Collection/Panel/Cats").get_children():
+		(c as Button).button_pressed = false
+	scene_builder_dock.get_node("Collection/Panel/Cats").get_child(tab_index).button_pressed = true
+	selected_collection_id = tab_index
+	reload_all_items()
 
-	for button: Button in btns_collection_tabs:
-		button.button_pressed = false
-
-	tab_container.current_tab = tab_index
-	selected_collection_name = collection_names[tab_index]
-	selected_collection_index = tab_index
-
-	if selected_collection_name == "" or selected_collection_name == " ":
-		selected_collection = {}
-	else:
-		if selected_collection_name in items_by_collection:
-			selected_collection = items_by_collection[selected_collection_name]
-		else:
-			selected_collection = {}
-			printerr("Missing collection folder: " + selected_collection_name)
-
-func on_item_icon_clicked(_button_name: String) -> void:
+func on_item_icon_clicked(_button_id: int) -> void:
 	if !update_world_3d():
 		return
 
-	if selected_item_name != _button_name:
-		select_item(selected_collection_name, _button_name)
+	if selected_item_id != _button_id:
+		select_item(_button_id)
 	elif placement_mode_enabled:
 		end_placement_mode()
 
 func reload_all_items() -> void:
 	print("[SceneBuilderDock] Freeing all texture buttons")
-	for i in range(1, num_collections + 1):
-		var grid_container: GridContainer = tab_container.get_node("%s/Grid" % i)
-		for _node in grid_container.get_children():
-			_node.queue_free()
+	var grid = scene_builder_dock.get_node("Collection/Scroll/Grid")
+	for c in grid.get_children():
+		c.queue_free()
+	if selected_collection_id >= len(collection_names):
+		print("Collection doesn't exist!")
+		return
+	if DirAccess.dir_exists_absolute(config.root_dir + "/%s" % collection_names[selected_collection_id]):
+		load_items_from_collection_folder_on_disk(collection_names[selected_collection_id])
+		for i in len(items):
+			var item = items[i]
+			var texture_button: TextureButton = TextureButton.new()
+			texture_button.toggle_mode = true
+			texture_button.texture_normal = item.texture
+			texture_button.tooltip_text = item.item_name
+			texture_button.ignore_texture_size = true
+			texture_button.stretch_mode = TextureButton.STRETCH_SCALE
+			texture_button.custom_minimum_size = Vector2(80, 80)
+			texture_button.pressed.connect(on_item_icon_clicked.bind(i))
+			grid.add_child(texture_button)
 
-	refresh_collection_names()
-
-	print("[SceneBuilderDock] Loading all items from all collections")
-	var i = 0
-	for collection_name in collection_names:
-		i += 1
-
-		if collection_name != "" and DirAccess.dir_exists_absolute(config.root_dir + "/%s" % collection_name):
-			print("[SceneBuilderDock] Populating grid with icons")
-
-			var grid_container: GridContainer = tab_container.get_node("%s/Grid" % i)
-
-			load_items_from_collection_folder_on_disk(collection_name)
-
-			item_highlighters_by_collection[collection_name] = {}
-
-			for key: String in ordered_keys_by_collection[collection_name]:
-				var item: SceneBuilderItem = items_by_collection[collection_name][key]
-				var texture_button: TextureButton = TextureButton.new()
-				texture_button.toggle_mode = true
-				texture_button.texture_normal = item.texture
-				texture_button.tooltip_text = item.item_name
-				texture_button.ignore_texture_size = true
-				texture_button.stretch_mode = TextureButton.STRETCH_SCALE
-				texture_button.custom_minimum_size = Vector2(80, 80)
-				texture_button.pressed.connect(on_item_icon_clicked.bind(item.item_name))
-				grid_container.add_child(texture_button)
-
-				var nine_patch: NinePatchRect = NinePatchRect.new()
-				nine_patch.texture = CanvasTexture.new()
-				nine_patch.draw_center = false
-				nine_patch.set_anchors_preset(Control.PRESET_FULL_RECT)
-				nine_patch.patch_margin_left = 4
-				nine_patch.patch_margin_top = 4
-				nine_patch.patch_margin_right = 4
-				nine_patch.patch_margin_bottom = 4
-				nine_patch.self_modulate = Color("000000") # black  # 6a9d2e green
-				item_highlighters_by_collection[collection_name][key] = nine_patch
-				texture_button.add_child(nine_patch)
-
-	select_collection(0)
-
-	# Info blurb
-	var _num_populated_collections: int = 0
-	for colletion_name in collection_names:
-		if colletion_name != "":
-			_num_populated_collections += 1
-	var _total_items: int = 0
-	for key: String in items_by_collection.keys():
-		_total_items += items_by_collection[key].size()
-
-	print("[SceneBuilderDock] Ready with %s collections and %s items" % [str(_num_populated_collections), str(_total_items)])
+			var nine_patch: NinePatchRect = NinePatchRect.new()
+			nine_patch.texture = CanvasTexture.new()
+			nine_patch.draw_center = false
+			nine_patch.set_anchors_preset(Control.PRESET_FULL_RECT)
+			nine_patch.patch_margin_left = 4
+			nine_patch.patch_margin_top = 4
+			nine_patch.patch_margin_right = 4
+			nine_patch.patch_margin_bottom = 4
+			nine_patch.self_modulate = Color("000000") # black  # 6a9d2e green
+			highlighters.push_back(nine_patch)
+			texture_button.add_child(nine_patch)
 
 func update_world_3d() -> bool:
 	var new_scene_root = EditorInterface.get_edited_scene_root()
@@ -626,7 +565,7 @@ func create_preview_instance() -> void:
 		scene_root.add_child(scene_builder_temp)
 		scene_builder_temp.owner = scene_root
 
-	preview_instance = get_instance_from_path(selected_item.uid)
+	preview_instance = get_instance_from_path(items[selected_item_id].uid)
 	scene_builder_temp.add_child(preview_instance)
 	preview_instance.owner = scene_root
 
@@ -643,22 +582,10 @@ func end_placement_mode() -> void:
 
 	placement_mode_enabled = false
 
-	if selected_item_name != "":
-		if item_highlighters_by_collection.has(selected_collection_name):
-			var item_highlighters: Dictionary = item_highlighters_by_collection[selected_collection_name]
-			if item_highlighters.has(selected_item_name):
-				var selected_nine_path: NinePatchRect = item_highlighters[selected_item_name]
-				if selected_nine_path:
-					selected_nine_path.self_modulate = Color.BLACK
-				else:
-					print("[SceneBuilderDock] NinePatchRect is null for selected_item_name: ", selected_item_name)
-			else:
-				print("[SceneBuilderDock] Key missing from highlighter collection, key: ", selected_item_name, ", from collection: ", selected_collection_name)
-		else:
-			print("[SceneBuilderDock] Highlighter collection missing for collection: ", selected_collection_name)
-
-	selected_item = null
-	selected_item_name = ""
+	if selected_item_id >= 0 and selected_item_id < len(items):
+		var selected_nine_path: NinePatchRect = highlighters[selected_item_id]
+		selected_nine_path.self_modulate = Color.BLACK
+	selected_item_id = -1
 
 func end_transform_mode() -> void:
 	current_transform_mode = TransformMode.NONE
@@ -666,10 +593,8 @@ func end_transform_mode() -> void:
 
 func load_items_from_collection_folder_on_disk(_collection_name: String):
 	print("[SceneBuilderDock] Collecting items from collection folder")
-
-	var items = {}
-	var ordered_item_keys = []
-
+	items.clear()
+	highlighters.clear()
 	var dir = DirAccess.open(config.root_dir + _collection_name)
 	if dir:
 		dir.list_dir_begin()
@@ -681,18 +606,12 @@ func load_items_from_collection_folder_on_disk(_collection_name: String):
 				var scene_builder_item: SceneBuilderItem = resource
 
 				print("[SceneBuilderDock] Loaded item: ", item_filename)
-
-				items[scene_builder_item.item_name] = scene_builder_item
-				ordered_item_keys.append(scene_builder_item.item_name)
+				items.push_back(scene_builder_item)
 			else:
 				print("[SceneBuilderDock] The resource is not a SceneBuilderItem or failed to load, item_path: ", item_path)
 			
-			item_filename = dir.get_next()
-		
+			item_filename = dir.get_next()	
 		dir.list_dir_end()
-
-	items_by_collection[_collection_name] = items
-	ordered_keys_by_collection[_collection_name] = ordered_item_keys
 
 func get_all_node_names(_node) -> Array[String]:
 	var _all_node_names = []
@@ -705,7 +624,7 @@ func get_all_node_names(_node) -> Array[String]:
 	return _all_node_names
 
 func instantiate_selected_item_at_position() -> void:
-	if preview_instance == null or selected_item == null:
+	if preview_instance == null or selected_item_id < 0 or selected_item_id >= len(items):
 		printerr("[SceneBuilderDock] Preview instance or selected item is null")
 		return
 
@@ -713,17 +632,17 @@ func instantiate_selected_item_at_position() -> void:
 	var result = perform_raycast_with_exclusion(preview_instance_rid_array)
 
 	if result and result.collider:
-		var instance = get_instance_from_path(selected_item.uid)
+		var instance = get_instance_from_path(items[selected_item_id].uid)
 		if selected_parent():
 			selected_parent().add_child(instance)
 		else:
 			scene_root.add_child(instance)
 		instance.owner = scene_root
-		initialize_node_name(instance, selected_item.item_name)
+		initialize_node_name(instance, items[selected_item_id].item_name)
 
 		var new_position: Vector3 = result.position
 		new_position = snap(new_position)
-		if selected_item.use_random_vertical_offset:
+		if items[selected_item_id].use_random_vertical_offset:
 			new_position.y += random_offset_y
 
 		instance.global_transform.origin = new_position
@@ -769,7 +688,7 @@ func populate_preview_instance_rid_array(instance: Node) -> void:
 	for child in instance.get_children():
 		populate_preview_instance_rid_array(child)
 
-func refresh_collection_names() -> void:
+func load_or_make_collections() -> void:
 	print("[SceneBuilderDock] Refreshing collection names")
 
 	if !DirAccess.dir_exists_absolute(config.root_dir):
@@ -784,102 +703,31 @@ func refresh_collection_names() -> void:
 
 		if save_result != OK:
 			printerr("[SceneBuilderDock] We were unable to create a CollectionNames resource at location: ", path_to_collection_names)
-			collection_names = Array()
-			collection_names.resize(24)
-			collection_names.fill("")
 
 			return
 
-	var _names: CollectionNames = load(path_to_collection_names)
-	if _names != null:
-			var new_collection_names: Array[String] = []
-			var new_collection_font_colors: Array[Color] = []
-
-			# Row 1
-			new_collection_names.append(_names.name_01)
-			new_collection_names.append(_names.name_02)
-			new_collection_names.append(_names.name_03)
-			new_collection_names.append(_names.name_04)
-			new_collection_names.append(_names.name_05)
-			new_collection_names.append(_names.name_06)
-			new_collection_font_colors.append(_names.font_color_01)
-			new_collection_font_colors.append(_names.font_color_02)
-			new_collection_font_colors.append(_names.font_color_03)
-			new_collection_font_colors.append(_names.font_color_04)
-			new_collection_font_colors.append(_names.font_color_05)
-			new_collection_font_colors.append(_names.font_color_06)
-
-			# Row 2
-			new_collection_names.append(_names.name_07)
-			new_collection_names.append(_names.name_08)
-			new_collection_names.append(_names.name_09)
-			new_collection_names.append(_names.name_10)
-			new_collection_names.append(_names.name_11)
-			new_collection_names.append(_names.name_12)
-			new_collection_font_colors.append(_names.font_color_07)
-			new_collection_font_colors.append(_names.font_color_08)
-			new_collection_font_colors.append(_names.font_color_09)
-			new_collection_font_colors.append(_names.font_color_10)
-			new_collection_font_colors.append(_names.font_color_11)
-			new_collection_font_colors.append(_names.font_color_12)
-
-			# Row 3
-			new_collection_names.append(_names.name_13)
-			new_collection_names.append(_names.name_14)
-			new_collection_names.append(_names.name_15)
-			new_collection_names.append(_names.name_16)
-			new_collection_names.append(_names.name_17)
-			new_collection_names.append(_names.name_18)
-			new_collection_font_colors.append(_names.font_color_13)
-			new_collection_font_colors.append(_names.font_color_14)
-			new_collection_font_colors.append(_names.font_color_15)
-			new_collection_font_colors.append(_names.font_color_16)
-			new_collection_font_colors.append(_names.font_color_17)
-			new_collection_font_colors.append(_names.font_color_18)
-
-			# Row 4
-			new_collection_names.append(_names.name_19)
-			new_collection_names.append(_names.name_20)
-			new_collection_names.append(_names.name_21)
-			new_collection_names.append(_names.name_22)
-			new_collection_names.append(_names.name_23)
-			new_collection_names.append(_names.name_24)
-			new_collection_font_colors.append(_names.font_color_19)
-			new_collection_font_colors.append(_names.font_color_20)
-			new_collection_font_colors.append(_names.font_color_21)
-			new_collection_font_colors.append(_names.font_color_22)
-			new_collection_font_colors.append(_names.font_color_23)
-			new_collection_font_colors.append(_names.font_color_24)
-
-			# Validate
-			for _name in new_collection_names:
-				if _name != "":
-					var dir = DirAccess.open(config.root_dir + _name)
-					if dir:
-						dir.list_dir_begin()
-						var item = dir.get_next()
-						if item != "":
-							print("[SceneBuilderDock] Collection directory is present and contains items: " + _name)
-						else:
-							printerr("[SceneBuilderDock] Directory exists, but contains no items: " + _name)
-						dir.list_dir_end()
-					else:
-						printerr("[SceneBuilderDock] Collection directory does not exist: " + _name)
-			collection_names = new_collection_names
-
-			for i in range(num_collections):
-				var collection_name = collection_names[i]
-				if collection_name == "":
-					collection_name = " "
-				btns_collection_tabs[i].text = collection_name
-				btns_collection_tabs[i].add_theme_color_override("font_color", new_collection_font_colors[i])
-
-	else:
-		printerr("[SceneBuilderDock] An unknown file exists at location %s. A resource of type CollectionNames should exist here.".format(path_to_collection_names))
-		collection_names = Array()
-		collection_names.resize(24)
-		collection_names.fill("")
-
+	var _cols: CollectionNames = load(path_to_collection_names)
+	if _cols == null:
+		printerr("Collection names can't be loaded")
+		return
+	collections = _cols
+	collection_names.clear()
+	collection_colors.clear()
+	var cat_parent = scene_builder_dock.get_node("Collection/Panel/Cats")
+	for c in cat_parent.get_children():
+		c.queue_free()
+	var names = collections.names_and_colors.keys().duplicate()
+	names.sort()
+	for n in names:
+		var i = len(collection_names)
+		collection_names.push_back(n)
+		collection_colors.push_back(collections.names_and_colors[n])
+		var butt = Button.new()
+		butt.name = n
+		butt.text = n
+		butt.add_theme_color_override("font_color", collection_colors[i])
+		butt.pressed.connect(select_collection.bind(i))
+		cat_parent.add_child(butt)
 	#endregion
 
 # ---- Shortcut ----------------------------------------------------------------
@@ -904,7 +752,6 @@ func place_fence():
 
 	var path: Path3D = selected_nodes[0]
 
-	var fence_piece_names: Array = ordered_keys_by_collection[selected_collection_name]
 	var path_length: float = path.curve.get_baked_length()
 
 	for distance in range(0, path_length, spinbox_separation_distance.value):
@@ -913,9 +760,8 @@ func place_fence():
 		var position: Vector3 = transform.origin
 		var basis: Basis = transform.basis.rotated(Vector3(0, 1, 0), deg_to_rad(spinbox_y_offset.value))
 
-		var chosen_piece_name: String = fence_piece_names[randi() % fence_piece_names.size()]
-		var chosen_piece = items_by_collection[selected_collection_name][chosen_piece_name]
-		var instance = get_instance_from_path(chosen_piece.scene_path)
+		var chosen_item: SceneBuilderItem = items.pick_random()
+		var instance = get_instance_from_path(chosen_item.uid)
 
 		undo_redo.add_do_method(scene_root, "add_child", instance)
 		undo_redo.add_do_method(instance, "set_owner", scene_root)
@@ -936,20 +782,20 @@ func reroll_preview_instance_transform() -> void:
 		printerr("[SceneBuilderDock] preview_instance is null inside reroll_preview_instance_transform()")
 		return
 
-	random_offset_y = rng.randf_range(selected_item.random_offset_y_min, selected_item.random_offset_y_max)
+	random_offset_y = rng.randf_range(items[selected_item_id].random_offset_y_min, items[selected_item_id].random_offset_y_max)
 
-	if selected_item.use_random_scale:
-		var random_scale: float = rng.randf_range(selected_item.random_scale_min, selected_item.random_scale_max)
+	if items[selected_item_id].use_random_scale:
+		var random_scale: float = rng.randf_range(items[selected_item_id].random_scale_min, items[selected_item_id].random_scale_max)
 		original_preview_scale = Vector3(random_scale, random_scale, random_scale)
 	else:
 		original_preview_scale = Vector3(1, 1, 1)
 
 	preview_instance.scale = original_preview_scale
 
-	if selected_item.use_random_rotation:
-		var x_rot: float = rng.randf_range(0, selected_item.random_rot_x)
-		var y_rot: float = rng.randf_range(0, selected_item.random_rot_y)
-		var z_rot: float = rng.randf_range(0, selected_item.random_rot_z)
+	if items[selected_item_id].use_random_rotation:
+		var x_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_x)
+		var y_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_y)
+		var z_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_z)
 		preview_instance.rotation = snap_rot(Vector3(deg_to_rad(x_rot), deg_to_rad(y_rot), deg_to_rad(z_rot)))
 		original_preview_basis = preview_instance.basis
 	else:
@@ -962,66 +808,39 @@ func reroll_preview_instance_transform() -> void:
 	pos_offset_y = 0
 	pos_offset_z = 0
 
-func select_item(collection_name: String, item_name: String) -> void:
+func select_item(item_id: int) -> void:
 	end_placement_mode()
-	var nine_path: NinePatchRect = item_highlighters_by_collection[collection_name][item_name]
+	if item_id < 0 or item_id >= len(items):
+		print("Item ", item_id, " doesn't exist, can't select.")
+		return
+	var nine_path: NinePatchRect = highlighters[item_id]
 	nine_path.self_modulate = Color.GREEN
-	selected_item_name = item_name
-	selected_item = selected_collection[selected_item_name]
+	selected_item_id = item_id
 	placement_mode_enabled = true;
 	create_preview_instance()
 
 func select_first_item() -> void:
-	if (!ordered_keys_by_collection.has(selected_collection_name)):
-		printerr("[SceneBuilderDock] Trying to select the first item, but the selected collection name does not exist: ", selected_collection_name)
-		return
-	var keys: Array = ordered_keys_by_collection[selected_collection_name]
-	if keys.is_empty():
-		printerr("[SceneBuilderDock] Trying to select the first item, but there are no items to select in this collection: ", selected_collection_name)
-		return
-	var _first_item: String = ordered_keys_by_collection[selected_collection_name][0]
-	print(_first_item)
-	select_item(selected_collection_name, _first_item)
+	select_item(0)
 
 func select_next_collection() -> void:
 	end_placement_mode()
-	for idx in range(selected_collection_index + 1, selected_collection_index + num_collections + 1):
-		var next_idx = idx % num_collections
-		if is_collection_populated(next_idx):
-			select_collection(next_idx)
-			select_first_item()
-			break
-		else:
-			print("[SceneBuilderDock] Collection is not populated: ", collection_names[next_idx])
+	var new_col = (selected_collection_id + 1) % len(collection_names)
+	select_collection(new_col)
+	select_first_item()
 
 func select_next_item() -> void:
-	var ordered_keys: Array = ordered_keys_by_collection[selected_collection_name]
-	var idx = ordered_keys.find(selected_item_name)
-	if idx >= 0:
-		var next_idx = (idx + 1) % ordered_keys.size()
-		var next_name = ordered_keys[next_idx]
-		select_item(selected_collection_name, next_name)
-	else:
-		printerr("[SceneBuilderDock] Next item not found? Current index: ", idx)
+	var id = (selected_item_id + 1) % len(items)
+	select_item(id)
 
 func select_previous_item() -> void:
-	var ordered_keys: Array = ordered_keys_by_collection[selected_collection_name]
-	var idx = ordered_keys.find(selected_item_name)
-	if idx >= 0:
-		select_item(selected_collection_name, ordered_keys[(idx - 1) % ordered_keys.size()])
-	else:
-		printerr("[SceneBuilderDock] Previous item not found")
+	var id = (len(items) + selected_item_id - 1) % len(items)
+	select_item(id)
 
 func select_previous_collection() -> void:
 	end_placement_mode()
-	for idx in range(selected_collection_index - 1, selected_collection_index - num_collections - 1, -1):
-		var prev_idx = (idx + num_collections) % num_collections
-		if is_collection_populated(prev_idx):
-			select_collection(prev_idx)
-			select_first_item()
-			break
-		else:
-			print("[SceneBuilderDock] Collection is not populated: ", collection_names[prev_idx])
+	var id = (len(collection_names) + selected_collection_id - 1) % len(collection_names)
+	select_collection(id)
+	select_first_item()
 
 func start_transform_mode(mode: TransformMode) -> void:
 	original_mouse_position = viewport.get_mouse_position()
