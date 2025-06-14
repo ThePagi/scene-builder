@@ -98,8 +98,10 @@ var random_offset_y: float = 0
 var original_preview_scale: Vector3 = Vector3.ONE
 var scene_builder_temp: Node # Used as a parent to the preview item
 
+var prev_parent: Node3D = null
+
 func snap(pos: Vector3) -> Vector3:
-	return (pos+items[selected_item_id].snap_offset).snapped(items[selected_item_id].snap_to_grid)
+	return (pos).snapped(items[selected_item_id].snap_to_grid)
 func snap_rot(euler: Vector3) -> Vector3:
 	return euler.snapped(Vector3.ONE*deg_to_rad(items[selected_item_id].snap_rotation))
 func selected_parent()->Node3D:
@@ -119,6 +121,7 @@ func selected_parent()->Node3D:
 			node_icon = get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons")
 		
 		btn_parent_node_selector.set_node_info(node.name, node_icon)
+		prev_parent = node
 		return node
 	else:
 		btn_parent_node_selector.set_node_info("Multiple nodes selected!", null)
@@ -220,10 +223,9 @@ func _exit_tree() -> void:
 	scene_builder_dock.queue_free()
 
 func _process(_delta: float) -> void:
-	selected_parent()
 	# Update preview item position
 	if placement_mode_enabled:
-
+		#selected_parent()
 		if not scene_root or not scene_root is Node3D or not scene_root.is_inside_tree():
 			print("[SceneBuilderDock] Scene root invalid, ending placement mode")
 			end_placement_mode()
@@ -234,14 +236,13 @@ func _process(_delta: float) -> void:
 				populate_preview_instance_rid_array(preview_instance)
 			var result = perform_raycast_with_exclusion(preview_instance_rid_array)
 			if result and result.collider:
-				var _preview_item = scene_root.get_node_or_null("SceneBuilderTemp")
+				var _preview_item = scene_root.get_node_or_null("_SceneBuilderTemp")
 				if _preview_item and _preview_item.get_child_count() > 0:
 					var _instance: Node3D = _preview_item.get_child(0)
 
-					var new_position: Vector3 = result.position
-
+					var new_position: Vector3 = snap(result.position)
+					new_position += items[selected_item_id].snap_offset
 					new_position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
-					new_position = snap(new_position)
 					# This offset prevents z-fighting when placing overlapping quads
 					if items[selected_item_id].use_random_vertical_offset:
 						new_position.y += random_offset_y
@@ -557,7 +558,7 @@ func clear_preview_instance() -> void:
 	preview_instance_rid_array = []
 
 	if scene_root != null:
-		scene_builder_temp = scene_root.get_node_or_null("SceneBuilderTemp")
+		scene_builder_temp = scene_root.get_node_or_null("_SceneBuilderTemp")
 		if scene_builder_temp:
 			for child in scene_builder_temp.get_children():
 				child.queue_free()
@@ -569,13 +570,13 @@ func create_preview_instance() -> void:
 
 	clear_preview_instance()
 
-	scene_builder_temp = scene_root.get_node_or_null("SceneBuilderTemp")
+	scene_builder_temp = scene_root.get_node_or_null("_SceneBuilderTemp")
 	if not scene_builder_temp:
 		scene_builder_temp = Node.new()
-		scene_builder_temp.name = "SceneBuilderTemp"
-		scene_root.add_child(scene_builder_temp)
+		scene_builder_temp.name = "_SceneBuilderTemp"
+		scene_root.add_child(scene_builder_temp, false, INTERNAL_MODE_FRONT)
 		scene_builder_temp.owner = scene_root
-
+	var orig_parent = selected_parent()
 	preview_instance = get_instance_from_path(items[selected_item_id].uid)
 	scene_builder_temp.add_child(preview_instance)
 	preview_instance.owner = scene_root
@@ -585,12 +586,13 @@ func create_preview_instance() -> void:
 	# Instantiating a node automatically selects it, which is annoying.
 	# Let's re-select scene_root instead,
 	EditorInterface.get_selection().clear()
-	EditorInterface.get_selection().add_node(scene_root)
+	EditorInterface.get_selection().add_node(orig_parent)
 
 func end_placement_mode() -> void:
 	clear_preview_instance()
 	end_transform_mode()
-
+	if prev_parent:
+		prev_parent.remove_meta("_edit_lock_")
 	placement_mode_enabled = false
 
 	if selected_item_id >= 0 and selected_item_id < len(items):
@@ -653,12 +655,14 @@ func instantiate_selected_item_at_position() -> void:
 
 		var new_position: Vector3 = result.position
 		new_position = snap(new_position)
+		new_position += items[selected_item_id].snap_offset
+		
 		if items[selected_item_id].use_random_vertical_offset:
 			new_position.y += random_offset_y
 
 		instance.global_transform.origin = new_position
 		instance.position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
-		print("[SceneBuilderDock] pos_offset_y: ", pos_offset_y)
+		#print("[SceneBuilderDock] pos_offset_y: ", pos_offset_y)
 		instance.basis = preview_instance.basis
 		instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
 		instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
@@ -822,6 +826,7 @@ func select_item(item_id: int) -> void:
 	end_placement_mode()
 	if not selected_parent():
 		return
+	selected_parent().set_meta("_edit_lock_", true)
 	if item_id < 0 or item_id >= len(items):
 		print("Item ", item_id, " doesn't exist, can't select.")
 		return
