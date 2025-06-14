@@ -42,14 +42,17 @@ shadow_enabled = true
 shadow_opacity = 0.5
 
 [node name="CameraRoot" type="Node3D" parent="."]
-transform = Transform3D(0.707106, 0, -0.707106, 0, 1, 0, 0.707106, 0, 0.707106, 0, 0, 0)
+transform = Transform3D(-0.57687, -0.00305313, -0.81683, 0, 0.999993, -0.00373775, 0.816836, -0.0021562, -0.576866, 0, 0, 0)
 
-[node name="Pitch" type="Node3D" parent="CameraRoot"]
-transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0)
+[node name="Yaw" type="Node3D" parent="CameraRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
-[node name="Camera3D" type="Camera3D" parent="CameraRoot/Pitch"]
-transform = Transform3D(1, -2.23517e-08, 2.98023e-08, 0, 1, 4.47035e-08, 0, -2.38419e-07, 1, 0, 0, 4.03794)
+[node name="Pitch" type="Node3D" parent="CameraRoot/Yaw"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraRoot/Yaw/Pitch"]
+transform = Transform3D(1, -2.23517e-08, 2.98023e-08, 0, 1, 4.47035e-08, 0, -2.38419e-07, 1, 0, 0, 2.23291)
 projection = 1
 current = true
-size = 3.36495
+size = 1.86076
 far = 100.0

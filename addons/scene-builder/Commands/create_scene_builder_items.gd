@@ -166,13 +166,22 @@ func _create_resource(path: String):
 		subject.owner = icon_studio
 		
 		var camera_root: Node3D = icon_studio.get_node("CameraRoot") as Node3D
-		var studio_camera: Camera3D = icon_studio.get_node("CameraRoot/Pitch/Camera3D") as Camera3D
+		camera_root.basis = Basis.IDENTITY
+		var studio_camera: Camera3D = icon_studio.get_node("CameraRoot/Yaw/Pitch/Camera3D") as Camera3D
 
 		# Center item in portrait frame
 		# Defaulting to 5 node child layers to get AABB
 		# Possible improvement : add parameter to UI
 		var node_depth = 5
 		var aabb = await _get_merged_aabb(subject, node_depth)
+		var avg_normal = _avg_dir(subject)
+		if avg_normal.length_squared() > 0.01:
+			camera_root.basis = Basis.looking_at(avg_normal)
+			camera_root.basis = camera_root.basis.rotated(Vector3.RIGHT, deg_to_rad(30))
+		else:
+			camera_root.basis = camera_root.basis.rotated(Vector3.RIGHT, deg_to_rad(-30))
+		camera_root.basis = camera_root.basis.rotated(Vector3.UP, deg_to_rad(-30))
+		camera_root.rotation = Vector3(camera_root.rotation.x, camera_root.rotation.y, 0)
 		print("[Create Scene Builder Items] Subject AABB: ", aabb)
 		var center = aabb.get_center()
 		print("[Create Scene Builder Items] Subject center: ", center)
@@ -210,6 +219,17 @@ func _create_resource(path: String):
 		fs.scan()
 		
 		print("[Create Scene Builder Items] Resource saved: " + save_path)
+
+func _avg_dir(node: Node)->Vector3:
+	var total = Vector3.FORWARD*0.001
+	if node is MeshInstance3D:
+		var f = node.mesh.get_faces()
+		var n = len(f)/3
+		for i in range(0, len(f), 3):
+			total += (f[i]-f[i+1]).cross(f[i]-f[i+2]).normalized()/n
+	for child in node.get_children():
+		total += _avg_dir(child)
+	return total
 
 func _create_directory_if_not_exists(path_to_directory: String) -> void:
 	var dir = DirAccess.open(path_to_directory)

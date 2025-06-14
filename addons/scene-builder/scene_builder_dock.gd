@@ -618,7 +618,7 @@ func load_items_from_collection_folder_on_disk(_collection_name: String):
 			if resource and resource is SceneBuilderItem:
 				var scene_builder_item: SceneBuilderItem = resource
 
-				print("[SceneBuilderDock] Loaded item: ", item_filename)
+				#print("[SceneBuilderDock] Loaded item: ", item_filename)
 				items.push_back(scene_builder_item)
 			else:
 				print("[SceneBuilderDock] The resource is not a SceneBuilderItem or failed to load, item_path: ", item_path)
