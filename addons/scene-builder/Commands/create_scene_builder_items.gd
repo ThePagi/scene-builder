@@ -105,7 +105,8 @@ func _on_ok_pressed():
 
 	for path in selected_paths:
 		await _create_resource(path)
-
+	
+	
 	popup_instance.queue_free()
 	done.emit()
 

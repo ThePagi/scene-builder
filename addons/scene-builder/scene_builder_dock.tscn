@@ -22,6 +22,25 @@ offset_right = -800.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="ParentNode" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="EmptySpace" type="Control" parent="ParentNode"]
+custom_minimum_size = Vector2(2, 0)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ParentNode"]
+layout_mode = 2
+text = "Selected parent"
+
+[node name="ParentNodeSelector" type="Button" parent="ParentNode"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "(root)"
+text_overrun_behavior = 3
+
 [node name="Collection" type="VBoxContainer" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
@@ -233,10 +252,11 @@ layout_mode = 2
 [node name="TabContainer" type="TabContainer" parent="Collection"]
 layout_mode = 2
 size_flags_vertical = 3
-current_tab = 0
+current_tab = 1
 tabs_visible = false
 
 [node name="1" type="ScrollContainer" parent="Collection/TabContainer"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
@@ -248,7 +268,6 @@ size_flags_horizontal = 3
 columns = 4
 
 [node name="2" type="ScrollContainer" parent="Collection/TabContainer"]
-visible = false
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
@@ -599,24 +618,6 @@ layout_mode = 2
 size_flags_horizontal = 6
 text = "-Z"
 
-[node name="ParentNode" type="HBoxContainer" parent="Settings/Tab/Options"]
-layout_mode = 2
-
-[node name="EmptySpace" type="Control" parent="Settings/Tab/Options/ParentNode"]
-custom_minimum_size = Vector2(2, 0)
-layout_mode = 2
-
-[node name="Label" type="Label" parent="Settings/Tab/Options/ParentNode"]
-layout_mode = 2
-text = "Parent node"
-
-[node name="ParentNodeSelector" type="Button" parent="Settings/Tab/Options/ParentNode"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
-layout_mode = 2
-text = "(root)"
-text_overrun_behavior = 3
-
 [node name="HSeparator" type="HSeparator" parent="Settings/Tab/Options"]
 layout_mode = 2
 
@@ -628,13 +629,21 @@ size_flags_vertical = 3
 [node name="Bottom" type="HBoxContainer" parent="Settings/Tab/Options"]
 layout_mode = 2
 
+[node name="CommandsPopup" type="MenuButton" parent="Settings/Tab/Options/Bottom"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🛠️Command list"
+flat = false
+
 [node name="FindWorld3D" type="Button" parent="Settings/Tab/Options/Bottom"]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 2
 text = "Find world 3d"
 
 [node name="EmptySpace2" type="Label" parent="Settings/Tab/Options/Bottom"]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -642,6 +651,14 @@ size_flags_horizontal = 3
 layout_mode = 2
 size_flags_horizontal = 8
 text = "Reload all items"
+
+[node name="QuickCommands" type="HBoxContainer" parent="Settings/Tab/Options"]
+layout_mode = 2
+
+[node name="CreateItems" type="Button" parent="Settings/Tab/Options/QuickCommands"]
+layout_mode = 2
+tooltip_text = "Opens item creation menu for the scene files selected in the FileSystem."
+text = "Create items"
 
 [node name="Path3D" type="VBoxContainer" parent="Settings/Tab"]
 visible = false

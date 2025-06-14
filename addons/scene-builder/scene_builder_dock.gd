@@ -23,6 +23,7 @@ var btn_use_local_space: Button
 var scene_builder_dock: VBoxContainer
 var tab_container: TabContainer
 var btns_collection_tabs: Array = [] # set in _enter_tree()
+var commands: SceneBuilderCommands
 # Options
 var btn_use_surface_normal: CheckButton
 var btn_surface_normal_x: CheckBox
@@ -32,6 +33,8 @@ var btn_parent_node_selector: Button
 var btn_group_surface_orientation: ButtonGroup
 var btn_find_world_3d: Button
 var btn_reload_all_items: Button
+var menu_command_popup: MenuButton
+var btn_cmd_create_items: Button
 # Path3D
 var spinbox_separation_distance: SpinBox
 var spinbox_jitter_x: SpinBox
@@ -68,7 +71,6 @@ var selected_item: SceneBuilderItem = null
 var selected_item_name: String = ""
 var preview_instance: Node3D = null
 var preview_instance_rid_array: Array[RID] = []
-var selected_parent_node: Node3D = null
 
 enum TransformMode {
 	NONE,
@@ -102,11 +104,36 @@ func snap(pos: Vector3) -> Vector3:
 	return (pos+selected_item.snap_offset).snapped(selected_item.snap_to_grid)
 func snap_rot(euler: Vector3) -> Vector3:
 	return euler.snapped(Vector3.ONE*deg_to_rad(selected_item.snap_rotation))
+func selected_parent()->Node3D:
+	var sel = EditorInterface.get_selection().get_selected_nodes()
+	if len(sel) == 0:
+		EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
+		sel = EditorInterface.get_selection().get_selected_nodes()
+	if len(sel) == 1:
+		if sel[0] is not Node3D:
+			btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
+			return null
+		var node = sel[0]
+		var node_name := node.get_class().split(".")[-1]
+		var node_icon := get_editor_interface().get_base_control().get_theme_icon(node_name, "EditorIcons")
+		
+		if node_icon == get_editor_interface().get_base_control().get_theme_icon("invalid icon", "EditorIcons"):
+			node_icon = get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons")
+		
+		btn_parent_node_selector.set_node_info(node.name, node_icon)
+		return node
+	else:
+		btn_parent_node_selector.set_node_info("Multiple nodes selected!", null)
+		return null
+
+func set_commands(cmd: SceneBuilderCommands):
+	commands = cmd
+	
 # ---- Notifications -----------------------------------------------------------
 
 func _enter_tree() -> void:
 	path_to_collection_names = config.root_dir + "collection_names.tres"
-
+	
 	editor = get_editor_interface()
 	base_control = EditorInterface.get_base_control()
 
@@ -149,7 +176,7 @@ func _enter_tree() -> void:
 	var script_path = SceneBuilderToolbox.find_resource_with_dynamic_path("scene_builder_node_path_selector.gd")
 	if script_path != "":
 		btn_parent_node_selector.set_script(load(script_path))
-		btn_parent_node_selector.path_selected.connect(set_parent_node)
+		#btn_parent_node_selector.path_selected.connect(set_parent_node)
 	else:
 		printerr("[SceneBuilderDock] Failed to find scene_builder_node_path_selector.gd")
 	
@@ -163,7 +190,10 @@ func _enter_tree() -> void:
 	btn_reload_all_items = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/ReloadAllItems")
 	btn_find_world_3d.pressed.connect(update_world_3d)
 	btn_reload_all_items.pressed.connect(reload_all_items)
-
+	menu_command_popup = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/CommandsPopup")
+	commands.fill_popup(menu_command_popup.get_popup())
+	btn_cmd_create_items = scene_builder_dock.get_node("Settings/Tab/Options/QuickCommands/CreateItems")
+	btn_cmd_create_items.pressed.connect(commands.create_scene_builder_items)
 	# Path3D tab
 	spinbox_separation_distance = scene_builder_dock.get_node("Settings/Tab/Path3D/Separation/SpinBox")
 	spinbox_jitter_x = scene_builder_dock.get_node("Settings/Tab/Path3D/Jitter/X")
@@ -190,6 +220,8 @@ func _exit_tree() -> void:
 	scene_builder_dock.queue_free()
 
 func _process(_delta: float) -> void:
+	
+	selected_parent()
 	# Update preview item position
 	if placement_mode_enabled:
 
@@ -444,47 +476,10 @@ func on_item_icon_clicked(_button_name: String) -> void:
 	if !update_world_3d():
 		return
 
-	if placement_mode_enabled:
-		end_placement_mode()
-	elif selected_item_name != _button_name:
+	if selected_item_name != _button_name:
 		select_item(selected_collection_name, _button_name)
-
-func set_parent_node(node_path: NodePath) -> void:
-	if not scene_root:
-			return
-	
-	# If no path provided, set to scene root
-	if node_path.is_empty() or str(node_path) == "":
-		selected_parent_node = scene_root
-		if scene_root:
-			var node_name := scene_root.get_class().split(".")[-1]
-			var node_icon := get_editor_interface().get_base_control().get_theme_icon(node_name, "EditorIcons")
-			
-			if node_icon == get_editor_interface().get_base_control().get_theme_icon("invalid icon", "EditorIcons"):
-				node_icon = get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons")
-			
-			btn_parent_node_selector.set_node_info(scene_root, node_icon)
-		else:
-			btn_parent_node_selector.set_node_info(null, null)
-		return
-
-	selected_parent_node = scene_root.get_node(node_path)
-	if not selected_parent_node:
-		# Fall back to scene root if path not found
-		selected_parent_node = scene_root
-		btn_parent_node_selector.set_node_info(scene_root, get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons"))
-		printerr("[SceneBuilderDock] ", node_path, " not found in scene, defaulting to scene root")
-		return
-
-	var node_name := selected_parent_node.get_class().split(".")[-1]
-	var node_icon := get_editor_interface().get_base_control().get_theme_icon(node_name, "EditorIcons")
-
-	# if there's an invalid icon, we use the default node icon
-	if node_icon == get_editor_interface().get_base_control().get_theme_icon("invalid icon", "EditorIcons"):
-		node_icon = get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons")
-
-	btn_parent_node_selector.set_node_info(selected_parent_node, node_icon)
-	print("[SceneBuilderDock] Parent node set to ", selected_parent_node.name)
+	elif placement_mode_enabled:
+		end_placement_mode()
 
 func reload_all_items() -> void:
 	print("[SceneBuilderDock] Freeing all texture buttons")
@@ -557,7 +552,6 @@ func update_world_3d() -> bool:
 		world3d = viewport.find_world_3d()
 		physics_space = world3d.direct_space_state
 		camera = viewport.get_camera_3d()
-		set_parent_node(NodePath())
 		return true
 	else:
 		print("[SceneBuilderDock] Failed to update world 3d")
@@ -567,7 +561,6 @@ func update_world_3d() -> bool:
 		world3d = null
 		physics_space = null
 		camera = null
-		set_parent_node(NodePath())
 		return false
 
 # ---- Helpers -----------------------------------------------------------------
@@ -721,8 +714,8 @@ func instantiate_selected_item_at_position() -> void:
 
 	if result and result.collider:
 		var instance = get_instance_from_path(selected_item.uid)
-		if selected_parent_node:
-			selected_parent_node.add_child(instance)
+		if selected_parent():
+			selected_parent().add_child(instance)
 		else:
 			scene_root.add_child(instance)
 		instance.owner = scene_root

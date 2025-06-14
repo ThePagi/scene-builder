@@ -21,7 +21,7 @@ func _enter_tree() -> void:
 
 	scene_builder_dock.update_config(scene_builder_config)
 	scene_builder_commands.update_config(scene_builder_config)
-	
+	scene_builder_dock.set_commands(scene_builder_commands)
 	add_child(scene_builder_commands)
 	add_child(scene_builder_dock)
 

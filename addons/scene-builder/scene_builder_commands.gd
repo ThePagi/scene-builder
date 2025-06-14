@@ -70,10 +70,8 @@ func _unhandled_input(event: InputEvent):
 				elif event.keycode == KEY_LEFT:
 					select_parents()
 
-func _enter_tree():
-	submenu_scene = PopupMenu.new()
+func fill_popup(submenu_scene: PopupMenu):
 	submenu_scene.connect("id_pressed", Callable(self, "_on_scene_submenu_item_selected"))
-	add_tool_submenu_item("Scene Builder", submenu_scene)
 	submenu_scene.add_item("Alphabetize nodes", SceneCommands.alphabetize_nodes)
 	submenu_scene.add_item("Change places", SceneCommands.change_places)
 	submenu_scene.add_item("Create audio stream player 3d", SceneCommands.create_audio_stream_player_3d)
@@ -90,6 +88,12 @@ func _enter_tree():
 	submenu_scene.add_item("Select children", SceneCommands.select_children)
 	submenu_scene.add_item("Select parents", SceneCommands.select_parents)
 	submenu_scene.add_item("Swap nodes", SceneCommands.swap_nodes)
+	return submenu_scene
+
+func _enter_tree():
+	submenu_scene = PopupMenu.new()
+	fill_popup(submenu_scene)
+	add_tool_submenu_item("Scene Builder", submenu_scene)
 
 func _exit_tree():
 	remove_tool_menu_item("Scene Builder")

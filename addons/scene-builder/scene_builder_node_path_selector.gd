@@ -21,13 +21,12 @@ func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 func _drop_data(_position: Vector2, data: Variant) -> void:
 	path_selected.emit(data.get("nodes")[0])
 
-func set_node_info(node: Node3D, node_icon: Texture2D):
+func set_node_info(node_name: String, node_icon: Texture2D):
 	# Set the button text to the node name
-	if node:
-		text = node.name
-		tooltip_text = node.name
-		icon = node_icon
+	text = node_name
+	tooltip_text = node_name
+	icon = node_icon
+	if not icon:
+		modulate = Color.RED
 	else:
-		text = "(root)"
-		tooltip_text = ""
-		icon = null
+		modulate = Color.AQUAMARINE
