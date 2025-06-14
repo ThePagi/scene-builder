@@ -49,10 +49,15 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Grid" type="GridContainer" parent="Collection/Scroll"]
+[node name="Grid" type="HFlowContainer" parent="Collection/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-columns = 4
+size_flags_vertical = 3
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+
+[node name="HSeparator5" type="HSeparator" parent="."]
+layout_mode = 2
 
 [node name="Settings" type="HBoxContainer" parent="."]
 layout_mode = 2
@@ -71,42 +76,51 @@ layout_mode = 2
 
 [node name="Left" type="VBoxContainer" parent="Settings/Tab/Options/FirstRow"]
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="UseSurfaceNormal" type="CheckButton" parent="Settings/Tab/Options/FirstRow/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 6
 text = "Surface normal"
 
-[node name="Orientation" type="VBoxContainer" parent="Settings/Tab/Options/FirstRow"]
+[node name="Orientation" type="HBoxContainer" parent="Settings/Tab/Options/FirstRow/Left"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Settings/Tab/Options/FirstRow/Orientation"]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "Orientation"
-vertical_alignment = 1
-
-[node name="ButtonGroup" type="HBoxContainer" parent="Settings/Tab/Options/FirstRow/Orientation"]
-layout_mode = 2
-
-[node name="X" type="CheckBox" parent="Settings/Tab/Options/FirstRow/Orientation/ButtonGroup"]
+[node name="X" type="CheckBox" parent="Settings/Tab/Options/FirstRow/Left/Orientation"]
 layout_mode = 2
 size_flags_horizontal = 6
 text = "X"
 
-[node name="Y" type="CheckBox" parent="Settings/Tab/Options/FirstRow/Orientation/ButtonGroup"]
+[node name="Y" type="CheckBox" parent="Settings/Tab/Options/FirstRow/Left/Orientation"]
 layout_mode = 2
 size_flags_horizontal = 6
 button_pressed = true
 text = "Y"
 
-[node name="Z" type="CheckBox" parent="Settings/Tab/Options/FirstRow/Orientation/ButtonGroup"]
+[node name="Z" type="CheckBox" parent="Settings/Tab/Options/FirstRow/Left/Orientation"]
 layout_mode = 2
 size_flags_horizontal = 6
 text = "-Z"
+
+[node name="IconSize" type="VBoxContainer" parent="Settings/Tab/Options/FirstRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Settings/Tab/Options/FirstRow/IconSize"]
+layout_mode = 2
+text = "Icon size"
+horizontal_alignment = 1
+
+[node name="HSlider" type="HSlider" parent="Settings/Tab/Options/FirstRow/IconSize"]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+min_value = 32.0
+max_value = 128.0
+value = 80.0
+rounded = true
+allow_greater = true
 
 [node name="HSeparator" type="HSeparator" parent="Settings/Tab/Options"]
 layout_mode = 2
@@ -139,7 +153,7 @@ size_flags_horizontal = 3
 
 [node name="ReloadAllItems" type="Button" parent="Settings/Tab/Options/Bottom"]
 layout_mode = 2
-size_flags_horizontal = 8
+size_flags_horizontal = 3
 text = "Reload all items"
 
 [node name="QuickCommands" type="HBoxContainer" parent="Settings/Tab/Options"]

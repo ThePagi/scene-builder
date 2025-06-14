@@ -23,7 +23,8 @@ fog_density = 0.2126
 
 [node name="IconStudio" type="SubViewport"]
 msaa_3d = 2
-size = Vector2i(96, 96)
+use_debanding = true
+size = Vector2i(128, 128)
 render_target_update_mode = 4
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
@@ -34,12 +35,14 @@ transform = Transform3D(-0.5, 0.612372, -0.612372, 0, 0.707107, 0.707106, 0.8660
 light_color = Color(1, 0.960784, 0.960784, 1)
 light_energy = 0.5
 shadow_enabled = true
+shadow_opacity = 0.5
 
 [node name="DirectionalLight3D2" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.129409, -0.52452, -0.841506, 0.482966, 0.774517, -0.408493, 0.866025, -0.353554, 0.353554, 0, 0, 0)
 light_color = Color(0.921569, 1, 1, 1)
 light_energy = 0.5
 shadow_enabled = true
+shadow_opacity = 0.5
 
 [node name="CameraRoot" type="Node3D" parent="."]
 transform = Transform3D(0.707106, 0, -0.707106, 0, 1, 0, 0.707106, 0, 0.707106, 0, 0, 0)
@@ -48,7 +51,8 @@ transform = Transform3D(0.707106, 0, -0.707106, 0, 1, 0, 0.707106, 0, 0.707106, 
 transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="CameraRoot/Pitch"]
-transform = Transform3D(1, -2.23517e-08, 2.98023e-08, 0, 1, 4.47035e-08, 0, -2.38419e-07, 1, 0, 0, 6.03268)
+transform = Transform3D(1, -2.23517e-08, 2.98023e-08, 0, 1, 4.47035e-08, 0, -2.38419e-07, 1, 0, 0, 4.03794)
 projection = 1
 current = true
-size = 5.02723
+size = 3.36495
+far = 100.0

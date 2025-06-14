@@ -181,10 +181,13 @@ func _create_resource(path: String):
 		studio_camera.position = Vector3(0, 0, aabb.get_longest_axis_size()*1.2)
 		studio_camera.size = aabb.get_longest_axis_size()
 		await get_tree().process_frame
-		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+
 
 		var viewport_tex: Texture = icon_studio.get_texture()
 		var img: Image = viewport_tex.get_image()
+		img.generate_mipmaps()
+		img.compress(Image.COMPRESS_S3TC, Image.COMPRESS_SOURCE_SRGB)
 		var tex: Texture = ImageTexture.create_from_image(img)
 
 		resource.texture = tex

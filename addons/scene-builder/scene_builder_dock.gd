@@ -33,6 +33,7 @@ var btn_find_world_3d: Button
 var btn_reload_all_items: Button
 var menu_command_popup: MenuButton
 var btn_cmd_create_items: Button
+var icon_size: HSlider
 # Path3D
 var spinbox_separation_distance: SpinBox
 var spinbox_jitter_x: SpinBox
@@ -61,11 +62,11 @@ var collection_names: Array[String] = []
 var collection_colors: Array[Color] = []
 
 # Also updated on tab button click
-var selected_collection_id: int
+var selected_collection_id: int = 0
 var items: Array[SceneBuilderItem] = []
 var highlighters: Array[NinePatchRect] = []
 # Also updated on item click
-var selected_item_id: int
+var selected_item_id: int = -1
 var preview_instance: Node3D = null
 var preview_instance_rid_array: Array[RID] = []
 
@@ -161,9 +162,9 @@ func _enter_tree() -> void:
 
 	# Options tab
 	btn_use_surface_normal = scene_builder_dock.get_node("%UseSurfaceNormal")
-	btn_surface_normal_x = scene_builder_dock.get_node("%Orientation/ButtonGroup/X")
-	btn_surface_normal_y = scene_builder_dock.get_node("%Orientation/ButtonGroup/Y")
-	btn_surface_normal_z = scene_builder_dock.get_node("%Orientation/ButtonGroup/Z")
+	btn_surface_normal_x = scene_builder_dock.get_node("%Orientation/X")
+	btn_surface_normal_y = scene_builder_dock.get_node("%Orientation/Y")
+	btn_surface_normal_z = scene_builder_dock.get_node("%Orientation/Z")
 	
 	btn_parent_node_selector = scene_builder_dock.get_node("%ParentNodeSelector")
 	var script_path = SceneBuilderToolbox.find_resource_with_dynamic_path("scene_builder_node_path_selector.gd")
@@ -187,6 +188,8 @@ func _enter_tree() -> void:
 	commands.fill_popup(menu_command_popup.get_popup())
 	btn_cmd_create_items = scene_builder_dock.get_node("Settings/Tab/Options/QuickCommands/CreateItems")
 	btn_cmd_create_items.pressed.connect(commands.create_scene_builder_items)
+	icon_size = scene_builder_dock.get_node("Settings/Tab/Options/FirstRow/IconSize/HSlider")
+	icon_size.value_changed.connect(resize_icons)
 	# Path3D tab
 	spinbox_separation_distance = scene_builder_dock.get_node("Settings/Tab/Path3D/Separation/SpinBox")
 	spinbox_jitter_x = scene_builder_dock.get_node("Settings/Tab/Path3D/Jitter/X")
@@ -207,6 +210,10 @@ func _enter_tree() -> void:
 	#
 	reload_all_items()
 	update_world_3d()
+
+func resize_icons(value: float):
+	for c in scene_builder_dock.get_node("Collection/Scroll/Grid").get_children():
+		(c as Control).custom_minimum_size = Vector2(value, value)
 
 func _exit_tree() -> void:
 	remove_control_from_docks(scene_builder_dock)
@@ -247,6 +254,7 @@ func _process(_delta: float) -> void:
 							quaternion = quaternion * Quaternion(Vector3(1, 0, 0), deg_to_rad(90))
 						elif btn_surface_normal_z.button_pressed:
 							quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
+
 func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput:
 	if event is InputEventMouseMotion:
 		if placement_mode_enabled:
@@ -430,12 +438,15 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 func select_collection(tab_index: int) -> void:
 	end_placement_mode()
-	
 	for c in scene_builder_dock.get_node("Collection/Panel/Cats").get_children():
-		(c as Button).button_pressed = false
-	scene_builder_dock.get_node("Collection/Panel/Cats").get_child(tab_index).button_pressed = true
+		(c as Button).modulate = Color.WHITE
+	if tab_index < 0 or tab_index >= len(collection_names):
+		print("Selected collection out of bounds")
+		return
+	scene_builder_dock.get_node("Collection/Panel/Cats").get_child(tab_index).modulate = Color.AQUAMARINE
 	selected_collection_id = tab_index
 	reload_all_items()
+	select_first_item()
 
 func on_item_icon_clicked(_button_id: int) -> void:
 	if !update_world_3d():
@@ -447,7 +458,6 @@ func on_item_icon_clicked(_button_id: int) -> void:
 		end_placement_mode()
 
 func reload_all_items() -> void:
-	print("[SceneBuilderDock] Freeing all texture buttons")
 	var grid = scene_builder_dock.get_node("Collection/Scroll/Grid")
 	for c in grid.get_children():
 		c.queue_free()
@@ -463,8 +473,8 @@ func reload_all_items() -> void:
 			texture_button.texture_normal = item.texture
 			texture_button.tooltip_text = item.item_name
 			texture_button.ignore_texture_size = true
-			texture_button.stretch_mode = TextureButton.STRETCH_SCALE
-			texture_button.custom_minimum_size = Vector2(80, 80)
+			texture_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT
+			texture_button.custom_minimum_size = Vector2(icon_size.value, icon_size.value)
 			texture_button.pressed.connect(on_item_icon_clicked.bind(i))
 			grid.add_child(texture_button)
 
@@ -476,6 +486,7 @@ func reload_all_items() -> void:
 			nine_patch.patch_margin_top = 4
 			nine_patch.patch_margin_right = 4
 			nine_patch.patch_margin_bottom = 4
+			nine_patch.modulate.a = 0.5
 			nine_patch.self_modulate = Color("000000") # black  # 6a9d2e green
 			highlighters.push_back(nine_patch)
 			texture_button.add_child(nine_patch)
@@ -703,9 +714,7 @@ func load_or_make_collections() -> void:
 
 		if save_result != OK:
 			printerr("[SceneBuilderDock] We were unable to create a CollectionNames resource at location: ", path_to_collection_names)
-
 			return
-
 	var _cols: CollectionNames = load(path_to_collection_names)
 	if _cols == null:
 		printerr("Collection names can't be loaded")
@@ -728,6 +737,7 @@ func load_or_make_collections() -> void:
 		butt.add_theme_color_override("font_color", collection_colors[i])
 		butt.pressed.connect(select_collection.bind(i))
 		cat_parent.add_child(butt)
+	select_collection(0)
 	#endregion
 
 # ---- Shortcut ----------------------------------------------------------------
@@ -810,6 +820,8 @@ func reroll_preview_instance_transform() -> void:
 
 func select_item(item_id: int) -> void:
 	end_placement_mode()
+	if not selected_parent():
+		return
 	if item_id < 0 or item_id >= len(items):
 		print("Item ", item_id, " doesn't exist, can't select.")
 		return
@@ -823,7 +835,6 @@ func select_first_item() -> void:
 	select_item(0)
 
 func select_next_collection() -> void:
-	end_placement_mode()
 	var new_col = (selected_collection_id + 1) % len(collection_names)
 	select_collection(new_col)
 	select_first_item()
