@@ -104,16 +104,16 @@ layout_mode = 2
 size_flags_horizontal = 6
 text = "-Z"
 
-[node name="IconSize" type="VBoxContainer" parent="Settings/Tab/Options/FirstRow"]
+[node name="HBox" type="VBoxContainer" parent="Settings/Tab/Options/FirstRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Settings/Tab/Options/FirstRow/IconSize"]
+[node name="Label" type="Label" parent="Settings/Tab/Options/FirstRow/HBox"]
 layout_mode = 2
 text = "Icon size"
 horizontal_alignment = 1
 
-[node name="HSlider" type="HSlider" parent="Settings/Tab/Options/FirstRow/IconSize"]
+[node name="IconSize" type="HSlider" parent="Settings/Tab/Options/FirstRow/HBox"]
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 min_value = 32.0
@@ -121,6 +121,16 @@ max_value = 128.0
 value = 80.0
 rounded = true
 allow_greater = true
+
+[node name="Label2" type="Label" parent="Settings/Tab/Options/FirstRow/HBox"]
+layout_mode = 2
+text = "Replace overlapping"
+horizontal_alignment = 1
+
+[node name="ReplaceOverlapping" type="CheckButton" parent="Settings/Tab/Options/FirstRow/HBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+button_pressed = true
 
 [node name="HSeparator" type="HSeparator" parent="Settings/Tab/Options"]
 layout_mode = 2

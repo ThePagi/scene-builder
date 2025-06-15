@@ -34,6 +34,7 @@ var btn_reload_all_items: Button
 var menu_command_popup: MenuButton
 var btn_cmd_create_items: Button
 var icon_size: HSlider
+var btn_replace_overlapping: CheckButton
 # Path3D
 var spinbox_separation_distance: SpinBox
 var spinbox_jitter_x: SpinBox
@@ -106,9 +107,9 @@ func snap_rot(euler: Vector3) -> Vector3:
 	return euler.snapped(Vector3.ONE*deg_to_rad(items[selected_item_id].snap_rotation))
 func selected_parent()->Node3D:
 	var sel = EditorInterface.get_selection().get_selected_nodes()
-	if len(sel) == 0:
-		EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
-		sel = EditorInterface.get_selection().get_selected_nodes()
+	#if len(sel) == 0:
+	#	EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
+	#	sel = EditorInterface.get_selection().get_selected_nodes()
 	if len(sel) == 1:
 		if sel[0] is not Node3D:
 			btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
@@ -121,10 +122,9 @@ func selected_parent()->Node3D:
 			node_icon = get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons")
 		
 		btn_parent_node_selector.set_node_info(node.name, node_icon)
-		prev_parent = node
 		return node
 	else:
-		btn_parent_node_selector.set_node_info("Multiple nodes selected!", null)
+		btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
 		return null
 
 func set_commands(cmd: SceneBuilderCommands):
@@ -188,8 +188,9 @@ func _enter_tree() -> void:
 	commands.fill_popup(menu_command_popup.get_popup())
 	btn_cmd_create_items = scene_builder_dock.get_node("Settings/Tab/Options/QuickCommands/CreateItems")
 	btn_cmd_create_items.pressed.connect(commands.create_scene_builder_items)
-	icon_size = scene_builder_dock.get_node("Settings/Tab/Options/FirstRow/IconSize/HSlider")
+	icon_size = scene_builder_dock.get_node("Settings/Tab/Options/FirstRow/HBox/IconSize")
 	icon_size.value_changed.connect(resize_icons)
+	btn_replace_overlapping = scene_builder_dock.get_node("Settings/Tab/Options/FirstRow/HBox/ReplaceOverlapping")
 	# Path3D tab
 	spinbox_separation_distance = scene_builder_dock.get_node("Settings/Tab/Path3D/Separation/SpinBox")
 	spinbox_jitter_x = scene_builder_dock.get_node("Settings/Tab/Path3D/Jitter/X")
@@ -221,6 +222,11 @@ func _exit_tree() -> void:
 	scene_builder_dock.queue_free()
 
 func _process(_delta: float) -> void:
+	var sel_parent = selected_parent()
+	if prev_parent != sel_parent:
+		end_placement_mode()
+		if sel_parent:
+			prev_parent = sel_parent
 	# Update preview item position
 	if placement_mode_enabled:
 		#selected_parent()
@@ -301,9 +307,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 				var mouse_pos = viewport.get_mouse_position()
 				if mouse_pos.x >= 0 and mouse_pos.y >= 0:
 					if mouse_pos.x <= viewport.size.x and mouse_pos.y <= viewport.size.y:
-
 						if event.button_index == MOUSE_BUTTON_LEFT:
-
 							if is_transform_mode_enabled():
 								# Confirm changes
 								#original_preview_basis = preview_instance.basis
@@ -318,7 +322,6 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 							return EditorPlugin.AFTER_GUI_INPUT_STOP
 
 						elif event.button_index == MOUSE_BUTTON_RIGHT:
-
 							if is_transform_mode_enabled():
 								# Revert preview transformations
 								print("[SceneBuilderDock] warping to: ", original_mouse_position)
@@ -326,7 +329,9 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								preview_instance.scale = original_preview_scale
 								end_transform_mode()
 								viewport.warp_mouse(original_mouse_position)
-
+								return EditorPlugin.AFTER_GUI_INPUT_STOP
+							else:
+								end_placement_mode()
 								return EditorPlugin.AFTER_GUI_INPUT_STOP
 
 	elif event is InputEventKey:
@@ -634,6 +639,31 @@ func get_all_node_names(_node) -> Array[String]:
 				_all_node_names.append(_item)
 	return _all_node_names
 
+func _get_merged_aabb(node: Node, node_depth: int) -> AABB:
+	var aabb := AABB()
+	
+	if node is GeometryInstance3D:
+		aabb = node.global_transform * node.get_aabb()
+	
+	if node_depth > 0:
+		for child in node.get_children():
+			var child_aabb = _get_merged_aabb(child, node_depth - 1)
+			if aabb == AABB():
+				aabb = child_aabb
+			elif child_aabb != AABB(): # this was fucking with the volume for some reason
+				aabb = aabb.merge(child_aabb)
+	
+	return aabb
+
+func _get_root_ancestor(child: Node, anc: Node) -> Node:
+	var p = child.get_parent()
+	if p:
+		if p == anc:
+			return child
+		return _get_root_ancestor(p, anc)
+	else:
+		return null
+
 func instantiate_selected_item_at_position() -> void:
 	if preview_instance == null or selected_item_id < 0 or selected_item_id >= len(items):
 		printerr("[SceneBuilderDock] Preview instance or selected item is null")
@@ -643,11 +673,13 @@ func instantiate_selected_item_at_position() -> void:
 	var result = perform_raycast_with_exclusion(preview_instance_rid_array)
 
 	if result and result.collider:
+		print(result.collider)
 		var instance = get_instance_from_path(items[selected_item_id].uid)
-		if selected_parent():
-			selected_parent().add_child(instance)
-		else:
-			scene_root.add_child(instance)
+		var parent = selected_parent()
+		if not parent:
+			printerr("Valid parent not selected.")
+			return
+		parent.add_child(instance)
 		instance.owner = scene_root
 		initialize_node_name(instance, items[selected_item_id].item_name)
 
@@ -665,7 +697,16 @@ func instantiate_selected_item_at_position() -> void:
 		instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
 		instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
 		undo_redo.create_action("Instantiate selected item")
-		undo_redo.add_undo_method(scene_root, "remove_child", instance)
+		undo_redo.add_undo_method(parent, "remove_child", instance)
+		var hit_ancestor = _get_root_ancestor(result.collider, parent)
+		if btn_replace_overlapping.button_pressed and hit_ancestor:
+			var old_aabb = _get_merged_aabb(result.collider, 5)
+			var new_aabb = _get_merged_aabb(instance, 5)
+			var cross = old_aabb.intersection(new_aabb)
+			if cross.get_volume()/new_aabb.get_volume() > 0.85\
+				and (old_aabb.size-new_aabb.size).length_squared() < 1:
+				parent.remove_child(hit_ancestor)
+				undo_redo.add_undo_method(parent, "add_child", hit_ancestor)
 		undo_redo.add_do_reference(instance)
 		undo_redo.commit_action()
 		reroll_preview_instance_transform()
@@ -822,6 +863,8 @@ func reroll_preview_instance_transform() -> void:
 
 func select_item(item_id: int) -> void:
 	end_placement_mode()
+	if len(EditorInterface.get_selection().get_selected_nodes()) == 0:
+		EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
 	if not selected_parent():
 		return
 	selected_parent().set_meta("_edit_lock_", true)
