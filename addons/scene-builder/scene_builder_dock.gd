@@ -370,7 +370,6 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						return EditorPlugin.AFTER_GUI_INPUT_STOP
 				else:
 					if event.keycode == config.x_axis:
-						
 						if is_transform_mode_enabled():
 							if current_transform_mode == TransformMode.ROTATION_X:
 								end_transform_mode()
@@ -414,6 +413,9 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						if is_transform_mode_enabled():
 							end_transform_mode()
 						reroll_preview_instance_transform()
+						return EditorPlugin.AFTER_GUI_INPUT_STOP
+					elif event.keycode == config.rotate_90:
+						preview_instance.rotate_y(deg_to_rad(90))
 						return EditorPlugin.AFTER_GUI_INPUT_STOP
 				if event.keycode == KEY_ESCAPE:
 					end_placement_mode()

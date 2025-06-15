@@ -21,6 +21,7 @@ class_name SceneBuilderConfig
 @export var set_visibility: Key = KEY_H
 
 # Transform
+@export var rotate_90: Key = KEY_R
 @export var reset_transform: Key = KEY_T
 @export var reset_transform_rotation: Key = KEY_R
 @export var push_to_grid: Key = KEY_P

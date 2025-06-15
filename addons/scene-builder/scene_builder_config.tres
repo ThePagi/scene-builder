@@ -14,6 +14,7 @@ change_places = 67
 find_mismatched_types = 57
 swap_nodes = 83
 set_visibility = 72
+rotate_90 = 82
 reset_transform = 84
 reset_transform_rotation = 82
 push_to_grid = 80
