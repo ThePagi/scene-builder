@@ -452,7 +452,6 @@ func select_collection(tab_index: int) -> void:
 	scene_builder_dock.get_node("Collection/Panel/Cats").get_child(tab_index).modulate = Color.AQUAMARINE
 	selected_collection_id = tab_index
 	reload_all_items()
-	select_first_item()
 
 func on_item_icon_clicked(_button_id: int) -> void:
 	if !update_world_3d():
@@ -610,26 +609,27 @@ func end_transform_mode() -> void:
 	reset_indicators()
 
 func load_items_from_collection_folder_on_disk(_collection_name: String):
-	print("[SceneBuilderDock] Collecting items from collection folder")
+	
 	items.clear()
 	highlighters.clear()
 	var dir = DirAccess.open(config.root_dir + _collection_name)
 	if dir:
+		var paths:Array[String] = []
 		dir.list_dir_begin()
 		var item_filename = dir.get_next()
 		while item_filename != "":
 			var item_path = config.root_dir + _collection_name + "/" + item_filename
-			var resource = ResourceLoader.load(item_path, "Resource", 0)
-			if resource and resource is SceneBuilderItem:
-				var scene_builder_item: SceneBuilderItem = resource
-
-				#print("[SceneBuilderDock] Loaded item: ", item_filename)
-				items.push_back(scene_builder_item)
-			else:
-				print("[SceneBuilderDock] The resource is not a SceneBuilderItem or failed to load, item_path: ", item_path)
-			
+			paths.push_back(item_path)
+			ResourceLoader.load_threaded_request(item_path, "Resource", false, 1)
 			item_filename = dir.get_next()	
 		dir.list_dir_end()
+		for path in paths:
+			var resource = ResourceLoader.load_threaded_get(path)
+			if resource and resource is SceneBuilderItem:
+				#print("[SceneBuilderDock] Loaded item: ", item_filename)
+				items.push_back(resource)
+			else:
+				print("[SceneBuilderDock] The resource is not a SceneBuilderItem or failed to load, item_path: ", path)
 
 func get_all_node_names(_node) -> Array[String]:
 	var _all_node_names = []
@@ -705,7 +705,7 @@ func instantiate_selected_item_at_position() -> void:
 			var old_aabb = _get_merged_aabb(result.collider, 5)
 			var new_aabb = _get_merged_aabb(instance, 5)
 			var cross = old_aabb.intersection(new_aabb)
-			if cross.get_volume()/new_aabb.get_volume() > 0.85\
+			if cross.get_volume()/max(old_aabb.get_volume()+0.01,new_aabb.get_volume()) > 0.85\
 				and (old_aabb.size-new_aabb.size).length_squared() < 1:
 				parent.remove_child(hit_ancestor)
 				undo_redo.add_undo_method(parent, "add_child", hit_ancestor)
