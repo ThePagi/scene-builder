@@ -159,9 +159,6 @@ func _enter_tree() -> void:
 	scene_builder_dock = load(path).instantiate()
 	
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, scene_builder_dock)
-	# Collection tabs
-	load_or_make_collections()
-
 
 	# Options tab
 	btn_use_surface_normal = scene_builder_dock.get_node("%UseSurfaceNormal")
@@ -210,8 +207,9 @@ func _enter_tree() -> void:
 
 	#endregion
 
+	# Collection tabs
+	load_or_make_collections()
 	#
-	reload_all_items()
 	update_world_3d()
 
 func resize_icons(value: float):
