@@ -455,12 +455,20 @@ func select_collection(tab_index: int) -> void:
 	selected_collection_id = tab_index
 	reload_all_items()
 
-func on_item_icon_clicked(_button_id: int) -> void:
+func on_item_icon_clicked(item_id: int) -> void:
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		if item_id < 0 or item_id >= len(items):
+			print("Item ", item_id, " doesn't exist, can't select.")
+			return
+		EditorInterface.edit_resource(items[item_id])
+		var tabs = EditorInterface.get_inspector().get_parent().get_parent() as TabContainer
+		tabs.current_tab = tabs.get_tab_idx_from_control(EditorInterface.get_inspector().get_parent())
+		return
 	if !update_world_3d():
 		return
 
-	if selected_item_id != _button_id:
-		select_item(_button_id)
+	if selected_item_id != item_id:
+		select_item(item_id)
 	elif placement_mode_enabled:
 		end_placement_mode()
 
@@ -484,6 +492,8 @@ func reload_all_items() -> void:
 			texture_button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT
 			texture_button.custom_minimum_size = Vector2(icon_size.value, icon_size.value)
 			texture_button.pressed.connect(on_item_icon_clicked.bind(i))
+			texture_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+			texture_button.button_mask = MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT
 			grid.add_child(texture_button)
 
 			var nine_patch: NinePatchRect = NinePatchRect.new()
@@ -494,7 +504,7 @@ func reload_all_items() -> void:
 			nine_patch.patch_margin_top = 4
 			nine_patch.patch_margin_right = 4
 			nine_patch.patch_margin_bottom = 4
-			nine_patch.modulate.a = 0.5
+			nine_patch.modulate.a = 0
 			nine_patch.self_modulate = Color("000000") # black  # 6a9d2e green
 			highlighters.push_back(nine_patch)
 			texture_button.add_child(nine_patch)
@@ -604,6 +614,7 @@ func end_placement_mode() -> void:
 
 	if selected_item_id >= 0 and selected_item_id < len(items):
 		var selected_nine_path: NinePatchRect = highlighters[selected_item_id]
+		selected_nine_path.modulate.a = 0
 		selected_nine_path.self_modulate = Color.BLACK
 	selected_item_id = -1
 
@@ -846,8 +857,6 @@ func reroll_preview_instance_transform() -> void:
 	if items[selected_item_id].use_random_scale:
 		var random_scale: float = rng.randf_range(items[selected_item_id].random_scale_min, items[selected_item_id].random_scale_max)
 		original_preview_scale = Vector3(random_scale, random_scale, random_scale)
-	else:
-		original_preview_scale = Vector3(1, 1, 1)
 
 	preview_instance.scale = original_preview_scale
 
@@ -857,15 +866,8 @@ func reroll_preview_instance_transform() -> void:
 		var z_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_z)
 		preview_instance.rotation = snap_rot(Vector3(deg_to_rad(x_rot), deg_to_rad(y_rot), deg_to_rad(z_rot)))
 		original_preview_basis = preview_instance.basis
-	else:
-		preview_instance.rotation = Vector3(0, 0, 0)
-		original_preview_basis = preview_instance.basis
 
 	original_preview_basis = preview_instance.basis
-
-	pos_offset_x = 0
-	pos_offset_y = 0
-	pos_offset_z = 0
 
 func select_item(item_id: int) -> void:
 	end_placement_mode()
@@ -877,8 +879,9 @@ func select_item(item_id: int) -> void:
 	if item_id < 0 or item_id >= len(items):
 		print("Item ", item_id, " doesn't exist, can't select.")
 		return
-	var nine_path: NinePatchRect = highlighters[item_id]
-	nine_path.self_modulate = Color.GREEN
+	var nine_patch: NinePatchRect = highlighters[item_id]
+	nine_patch.modulate.a = 1
+	nine_patch.self_modulate = Color.DARK_ORANGE
 	selected_item_id = item_id
 	placement_mode_enabled = true;
 	create_preview_instance()
