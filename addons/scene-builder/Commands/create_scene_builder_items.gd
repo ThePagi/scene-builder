@@ -212,7 +212,7 @@ func _create_resource(path: String):
 			resource.snap_to_grid.y = aabb.size.y
 		if auto_snapz.button_pressed:
 			resource.snap_to_grid.z = aabb.size.z
-		var save_path: String = path_root + resource.collection_name + "/%s.tres" % resource.item_name
+		var save_path: String = path_root + resource.collection_name + "/%s.res" % resource.item_name
 		ResourceSaver.save(resource, save_path)
 		var fs = EditorInterface.get_resource_filesystem()
 		fs.update_file(save_path)
