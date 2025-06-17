@@ -3,7 +3,7 @@ extends EditorPlugin
 ## Creates Scene Builder items from selection on Editor.
 ## A Popup is created in which user can change creation settings.
 
-var path_root = "res://Data/scene-builder/"
+var path_root = "res://Editor/scene-builder/"
 
 var editor: EditorInterface
 var popup_instance: PopupPanel

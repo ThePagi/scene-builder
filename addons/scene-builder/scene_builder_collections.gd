@@ -7,10 +7,12 @@ class_name CollectionNames
 func check_new_collections():
 	var dirs = DirAccess.open(resource_path.get_base_dir()).get_directories()
 	for dir in dirs:
+		print("Dir ", dir)
 		if dir not in names_and_colors:
 			names_and_colors[dir] = Color.WHITE
 			notify_property_list_changed()
 	for n in names_and_colors.keys():
+		print("N ", n)
 		if n not in dirs:
 			DirAccess.open(resource_path.get_base_dir()).make_dir_recursive(n)
 	

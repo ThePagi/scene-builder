@@ -210,6 +210,8 @@ func _enter_tree() -> void:
 
 	# Collection tabs
 	load_or_make_collections()
+	select_collection(0)
+	
 	#
 	update_world_3d()
 
@@ -463,6 +465,7 @@ func on_item_icon_clicked(_button_id: int) -> void:
 		end_placement_mode()
 
 func reload_all_items() -> void:
+	load_or_make_collections()
 	var grid = scene_builder_dock.get_node("Collection/Scroll/Grid")
 	for c in grid.get_children():
 		c.queue_free()
@@ -750,8 +753,9 @@ func load_or_make_collections() -> void:
 	if !DirAccess.dir_exists_absolute(config.root_dir):
 		DirAccess.make_dir_recursive_absolute(config.root_dir)
 		print("[SceneBuilderDock] Creating a new data folder: ", config.root_dir)
-
+	print(path_to_collection_names)
 	if !ResourceLoader.exists(path_to_collection_names):
+		print("file not found")
 		var _collection_names: CollectionNames = CollectionNames.new()
 		print("[SceneBuilderDock] path_to_collection_names: ", path_to_collection_names)
 		var save_result = ResourceSaver.save(_collection_names, path_to_collection_names)
@@ -761,6 +765,7 @@ func load_or_make_collections() -> void:
 			printerr("[SceneBuilderDock] We were unable to create a CollectionNames resource at location: ", path_to_collection_names)
 			return
 	var _cols: CollectionNames = load(path_to_collection_names)
+	_cols.check_new_collections()
 	if _cols == null:
 		printerr("Collection names can't be loaded")
 		return
@@ -782,7 +787,6 @@ func load_or_make_collections() -> void:
 		butt.add_theme_color_override("font_color", collection_colors[i])
 		butt.pressed.connect(select_collection.bind(i))
 		cat_parent.add_child(butt)
-	select_collection(0)
 	#endregion
 
 # ---- Shortcut ----------------------------------------------------------------
@@ -924,13 +928,6 @@ func start_transform_mode(mode: TransformMode) -> void:
 		TransformMode.SCALE:
 			lbl_indicator_scale.self_modulate = Color.GREEN
 
-func get_icon(collection_name: String, item_name: String) -> Texture:
-	var icon_path: String = "res://Data/scene-builder/%s/Thumbnail/%s.png" % [collection_name, item_name]
-	var tex: Texture = load(icon_path) as Texture
-	if tex == null:
-		printerr("[SceneBuilderDock] Icon not found: ", icon_path)
-		return null
-	return tex
 
 func get_instance_from_path(_uid: String) -> Node3D:
 	var uid: int = ResourceUID.text_to_id(_uid)
