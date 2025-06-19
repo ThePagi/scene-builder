@@ -29,7 +29,6 @@ var btn_surface_normal_y: CheckBox
 var btn_surface_normal_z: CheckBox
 var btn_parent_node_selector: Button
 var btn_group_surface_orientation: ButtonGroup
-var btn_find_world_3d: Button
 var btn_reload_all_items: Button
 var menu_command_popup: MenuButton
 var btn_cmd_create_items: Button
@@ -49,13 +48,12 @@ var lbl_indicator_y: Label
 var lbl_indicator_z: Label
 var lbl_indicator_scale: Label
 
-# Updated with update_world_3d()
+# Updated with selected_parent()
 var editor: EditorInterface
 var physics_space: PhysicsDirectSpaceState3D
 var world3d: World3D
 var viewport: Viewport
 var camera: Camera3D
-var scene_root: Node3D
 
 # Updated when reloading all collections
 var collections: CollectionNames
@@ -89,15 +87,12 @@ func is_transform_mode_enabled() -> bool:
 	return current_transform_mode != TransformMode.NONE
 
 # Preview item
-var pos_offset_x: float = 0
-var pos_offset_y: float = 0
-var pos_offset_z: float = 0
 var original_preview_position: Vector3 = Vector3.ZERO
 var original_preview_basis: Basis = Basis.IDENTITY
 var original_mouse_position: Vector2 = Vector2.ONE
-var random_offset_y: float = 0
 var original_preview_scale: Vector3 = Vector3.ONE
-var scene_builder_temp: Node # Used as a parent to the preview item
+var random_offset_y: float = 0
+var preview_temp_parent: Node3D # Used as a parent to the preview item
 
 var prev_parent: Node3D = null
 
@@ -114,6 +109,11 @@ func selected_parent()->Node3D:
 		if sel[0] is not Node3D:
 			btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
 			return null
+		viewport = EditorInterface.get_editor_viewport_3d()
+		world3d = viewport.find_world_3d()
+		physics_space = world3d.direct_space_state
+		camera = viewport.get_camera_3d()
+		
 		var node = sel[0]
 		var node_name := node.get_class().split(".")[-1]
 		var node_icon := get_editor_interface().get_base_control().get_theme_icon(node_name, "EditorIcons")
@@ -180,9 +180,7 @@ func _enter_tree() -> void:
 	btn_surface_normal_y.button_group = btn_group_surface_orientation
 	btn_surface_normal_z.button_group = btn_group_surface_orientation
 	#
-	btn_find_world_3d = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/FindWorld3D")
 	btn_reload_all_items = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/ReloadAllItems")
-	btn_find_world_3d.pressed.connect(update_world_3d)
 	btn_reload_all_items.pressed.connect(reload_all_items)
 	menu_command_popup = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/CommandsPopup")
 	commands.fill_popup(menu_command_popup.get_popup())
@@ -211,9 +209,7 @@ func _enter_tree() -> void:
 	# Collection tabs
 	load_or_make_collections()
 	select_collection(0)
-	
-	#
-	update_world_3d()
+
 
 func resize_icons(value: float):
 	for c in scene_builder_dock.get_node("Collection/Scroll/Grid").get_children():
@@ -231,36 +227,26 @@ func _process(_delta: float) -> void:
 			prev_parent = sel_parent
 	# Update preview item position
 	if placement_mode_enabled:
-		#selected_parent()
-		if not scene_root or not scene_root is Node3D or not scene_root.is_inside_tree():
-			print("[SceneBuilderDock] Scene root invalid, ending placement mode")
-			end_placement_mode()
-			return
-		
 		if !is_transform_mode_enabled():
-			if preview_instance:
-				populate_preview_instance_rid_array(preview_instance)
+			populate_preview_instance_rid_array(preview_instance)
 			var result = perform_raycast_with_exclusion(preview_instance_rid_array)
 			if result and result.collider:
-				var _preview_item = scene_root.get_node_or_null("_SceneBuilderTemp")
-				if _preview_item and _preview_item.get_child_count() > 0:
-					var _instance: Node3D = _preview_item.get_child(0)
+				var p = result.position
+				if preview_temp_parent.get_parent_node_3d():
+					p = preview_temp_parent.get_parent_node_3d().to_local(p)
+				var new_position: Vector3 = snap(items[selected_item_id].snap_offset + p)
+				# This offset prevents z-fighting when placing overlapping quads
+				if items[selected_item_id].use_random_vertical_offset:
+					new_position.y += random_offset_y
 
-					var new_position: Vector3 = snap(result.position)
-					new_position += items[selected_item_id].snap_offset
-					new_position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
-					# This offset prevents z-fighting when placing overlapping quads
-					if items[selected_item_id].use_random_vertical_offset:
-						new_position.y += random_offset_y
-
-					_instance.global_transform.origin = new_position
-					if btn_use_surface_normal.button_pressed:
-						_instance.basis = align_up(_instance.global_transform.basis, result.normal)
-						var quaternion = Quaternion(_instance.basis.orthonormalized())
-						if btn_surface_normal_x.button_pressed:
-							quaternion = quaternion * Quaternion(Vector3(1, 0, 0), deg_to_rad(90))
-						elif btn_surface_normal_z.button_pressed:
-							quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
+				preview_temp_parent.position =  new_position
+				if btn_use_surface_normal.button_pressed:
+					preview_temp_parent.basis = align_up(preview_temp_parent.global_transform.basis, result.normal)
+					var quaternion = Quaternion(preview_temp_parent.basis.orthonormalized())
+					if btn_surface_normal_x.button_pressed:
+						quaternion = quaternion * Quaternion(Vector3(1, 0, 0), deg_to_rad(90))
+					elif btn_surface_normal_z.button_pressed:
+						quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
 
 func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput:
 	if event is InputEventMouseMotion:
@@ -274,34 +260,31 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 			match current_transform_mode:
 				TransformMode.POSITION_X:
-					pos_offset_x += relative_motion
-					preview_instance.position.x = original_preview_position.x + pos_offset_x
+					preview_temp_parent.position.x += relative_motion
 				TransformMode.POSITION_Y:
-					pos_offset_y += relative_motion
-					preview_instance.position.y = original_preview_position.y + pos_offset_y
+					preview_temp_parent.position.y += relative_motion
 				TransformMode.POSITION_Z:
-					pos_offset_z += relative_motion
-					preview_instance.position.z = original_preview_position.z + pos_offset_z
+					preview_temp_parent.position.z += relative_motion
 				TransformMode.ROTATION_X:
 					if btn_use_local_space.button_pressed:
-						preview_instance.rotate_object_local(Vector3(1, 0, 0), relative_motion)
+						preview_temp_parent.rotate_object_local(Vector3(1, 0, 0), relative_motion)
 					else:
-						preview_instance.rotate_x(relative_motion)
+						preview_temp_parent.rotate_x(relative_motion)
 				TransformMode.ROTATION_Y:
 					if btn_use_local_space.button_pressed:
-						preview_instance.rotate_object_local(Vector3(0, 1, 0), relative_motion)
+						preview_temp_parent.rotate_object_local(Vector3(0, 1, 0), relative_motion)
 					else:
-						preview_instance.rotate_y(relative_motion)
+						preview_temp_parent.rotate_y(relative_motion)
 				TransformMode.ROTATION_Z:
 					if btn_use_local_space.button_pressed:
-						preview_instance.rotate_object_local(Vector3(0, 0, 1), relative_motion)
+						preview_temp_parent.rotate_object_local(Vector3(0, 0, 1), relative_motion)
 					else:
-						preview_instance.rotate_z(relative_motion)
+						preview_temp_parent.rotate_z(relative_motion)
 				TransformMode.SCALE:
-					var new_scale: Vector3 = preview_instance.scale * (1 + relative_motion)
+					var new_scale: Vector3 = preview_temp_parent.scale * (1 + relative_motion)
 					if is_zero_approx(new_scale.x) or is_zero_approx(new_scale.y) or is_zero_approx(new_scale.z):
 						new_scale = original_preview_scale
-					preview_instance.scale = new_scale
+					preview_temp_parent.scale = new_scale
 
 	if event is InputEventMouseButton:
 		if event.is_pressed() and !event.is_echo():
@@ -313,10 +296,10 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 							if is_transform_mode_enabled():
 								# Confirm changes
 								#original_preview_basis = preview_instance.basis
-								original_preview_scale = preview_instance.scale
-								original_preview_basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
-								original_preview_basis = original_preview_basis.scaled(preview_instance.basis.get_scale())
-								preview_instance.basis = original_preview_basis
+								original_preview_scale = preview_temp_parent.scale
+								original_preview_basis = Basis.from_euler(snap_rot(preview_temp_parent.basis.get_euler()))
+								original_preview_basis = original_preview_basis.scaled(preview_temp_parent.basis.get_scale())
+								preview_temp_parent.basis = original_preview_basis
 								end_transform_mode()
 								viewport.warp_mouse(original_mouse_position)
 							else:
@@ -327,8 +310,8 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 							if is_transform_mode_enabled():
 								# Revert preview transformations
 								print("[SceneBuilderDock] warping to: ", original_mouse_position)
-								preview_instance.basis = original_preview_basis
-								preview_instance.scale = original_preview_scale
+								preview_temp_parent.basis = original_preview_basis
+								preview_temp_parent.scale = original_preview_scale
 								end_transform_mode()
 								viewport.warp_mouse(original_mouse_position)
 								return EditorPlugin.AFTER_GUI_INPUT_STOP
@@ -417,7 +400,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 						reroll_preview_instance_transform()
 						return EditorPlugin.AFTER_GUI_INPUT_STOP
 					elif event.keycode == config.rotate_90:
-						preview_instance.rotate_y(deg_to_rad(90))
+						preview_temp_parent.rotate_y(deg_to_rad(90))
 						return EditorPlugin.AFTER_GUI_INPUT_STOP
 				if event.keycode == KEY_ESCAPE:
 					end_placement_mode()
@@ -464,8 +447,6 @@ func on_item_icon_clicked(item_id: int) -> void:
 		var tabs = EditorInterface.get_inspector().get_parent().get_parent() as TabContainer
 		tabs.current_tab = tabs.get_tab_idx_from_control(EditorInterface.get_inspector().get_parent())
 		return
-	if !update_world_3d():
-		return
 
 	if selected_item_id != item_id:
 		select_item(item_id)
@@ -509,27 +490,6 @@ func reload_all_items() -> void:
 			highlighters.push_back(nine_patch)
 			texture_button.add_child(nine_patch)
 
-func update_world_3d() -> bool:
-	var new_scene_root = EditorInterface.get_edited_scene_root()
-	if new_scene_root != null and new_scene_root is Node3D:
-		if scene_root == new_scene_root:
-			return true
-		end_placement_mode()
-		scene_root = new_scene_root
-		viewport = EditorInterface.get_editor_viewport_3d()
-		world3d = viewport.find_world_3d()
-		physics_space = world3d.direct_space_state
-		camera = viewport.get_camera_3d()
-		return true
-	else:
-		print("[SceneBuilderDock] Failed to update world 3d")
-		end_placement_mode()
-		scene_root = null
-		viewport = null
-		world3d = null
-		physics_space = null
-		camera = null
-		return false
 
 # ---- Helpers -----------------------------------------------------------------
 
@@ -571,43 +531,33 @@ func align_up(node_basis, normal) -> Basis:
 	return result
 
 func clear_preview_instance() -> void:
-	preview_instance = null
+	if preview_instance:
+		preview_instance.free()
 	preview_instance_rid_array = []
 
-	if scene_root != null:
-		scene_builder_temp = scene_root.get_node_or_null("_SceneBuilderTemp")
-		if scene_builder_temp:
-			for child in scene_builder_temp.get_children():
-				child.queue_free()
-
 func create_preview_instance() -> void:
-	if scene_root == null:
-		printerr("[SceneBuilderDock] scene_root is null inside create_preview_item_instance")
-		return
 
 	clear_preview_instance()
 
-	scene_builder_temp = scene_root.get_node_or_null("_SceneBuilderTemp")
-	if not scene_builder_temp:
-		scene_builder_temp = Node.new()
-		scene_builder_temp.name = "_SceneBuilderTemp"
-		scene_root.add_child(scene_builder_temp, false, INTERNAL_MODE_FRONT)
-		scene_builder_temp.owner = scene_root
-	var orig_parent = selected_parent()
 	preview_instance = get_instance_from_path(items[selected_item_id].uid)
-	scene_builder_temp.add_child(preview_instance)
-	preview_instance.owner = scene_root
-
+	preview_temp_parent.add_child(preview_instance)
+	preview_instance.owner = EditorInterface.get_edited_scene_root()
+	preview_instance.position = Vector3.ZERO
+	preview_instance.rotation = Vector3.ZERO
+	original_preview_basis = Basis()
+	original_preview_scale = Vector3.ONE
 	reroll_preview_instance_transform()
 
 	# Instantiating a node automatically selects it, which is annoying.
 	# Let's re-select scene_root instead,
 	EditorInterface.get_selection().clear()
-	EditorInterface.get_selection().add_node(orig_parent)
+	EditorInterface.get_selection().add_node(preview_temp_parent.get_parent())
 
 func end_placement_mode() -> void:
 	clear_preview_instance()
 	end_transform_mode()
+	if preview_temp_parent:
+		preview_temp_parent.free()
 	if prev_parent:
 		prev_parent.remove_meta("_edit_lock_")
 	placement_mode_enabled = false
@@ -687,31 +637,28 @@ func instantiate_selected_item_at_position() -> void:
 
 	populate_preview_instance_rid_array(preview_instance)
 	var result = perform_raycast_with_exclusion(preview_instance_rid_array)
-
+	# todo remove the raycast cos we do it each frame anyway
 	if result and result.collider:
-		print(result.collider)
 		var instance = get_instance_from_path(items[selected_item_id].uid)
 		var parent = selected_parent()
 		if not parent:
 			printerr("Valid parent not selected.")
 			return
 		parent.add_child(instance)
-		instance.owner = scene_root
+		instance.owner = EditorInterface.get_edited_scene_root()
 		initialize_node_name(instance, items[selected_item_id].item_name)
 
 		var new_position: Vector3 = result.position
 		new_position = snap(new_position)
-		new_position += items[selected_item_id].snap_offset
 		
 		if items[selected_item_id].use_random_vertical_offset:
 			new_position.y += random_offset_y
 
-		instance.global_transform.origin = new_position
-		instance.position += Vector3(pos_offset_x, pos_offset_y, pos_offset_z)
+		instance.transform = preview_temp_parent.transform*preview_instance.transform
 		#print("[SceneBuilderDock] pos_offset_y: ", pos_offset_y)
-		instance.basis = preview_instance.basis
-		instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
-		instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
+		#instance.basis = preview_instance.basis
+		#instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
+		#instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
 		undo_redo.create_action("Instantiate selected item")
 		undo_redo.add_undo_method(parent, "remove_child", instance)
 		var hit_ancestor = _get_root_ancestor(result.collider, parent)
@@ -730,17 +677,10 @@ func instantiate_selected_item_at_position() -> void:
 		print("[SceneBuilderDock] Raycast missed, items must be instantiated on a StaticBody with a CollisionShape")
 
 func initialize_node_name(node: Node3D, new_name: String) -> void:
-	var all_names = toolbox.get_all_node_names(scene_root)
+	var all_names = toolbox.get_all_node_names(selected_parent())
 	node.name = toolbox.increment_name_until_unique(new_name, all_names)
 
 func perform_raycast_with_exclusion(exclude_rids: Array = []) -> Dictionary:
-	if viewport == null:
-		update_world_3d()
-		if viewport == null:
-			print("[SceneBuilderDock] The editor's root scene must be of type Node3D, deselecting item")
-			end_placement_mode()
-			return {}
-
 	var mouse_pos = viewport.get_mouse_position()
 	var origin = camera.project_ray_origin(mouse_pos)
 	var end = origin + camera.project_ray_normal(mouse_pos) * 1000
@@ -806,10 +746,6 @@ func place_fence():
 	var selection: EditorSelection = EditorInterface.get_selection()
 	var selected_nodes: Array[Node] = selection.get_selected_nodes()
 
-	if scene_root == null:
-		print("[SceneBuilderDock] Scene root is null")
-		return
-
 	if selected_nodes.size() != 1:
 		printerr("[SceneBuilderDock] Exactly one node sould be selected in the scene")
 		return
@@ -832,9 +768,9 @@ func place_fence():
 
 		var chosen_item: SceneBuilderItem = items.pick_random()
 		var instance = get_instance_from_path(chosen_item.uid)
-
-		undo_redo.add_do_method(scene_root, "add_child", instance)
-		undo_redo.add_do_method(instance, "set_owner", scene_root)
+		var p = selected_parent()
+		undo_redo.add_do_method(p, "add_child", instance)
+		undo_redo.add_do_method(instance, "set_owner", p)
 		undo_redo.add_do_method(instance, "set_global_transform", Transform3D(
 			basis.rotated(Vector3(1, 0, 0), randf() * deg_to_rad(spinbox_jitter_x.value))
 				 .rotated(Vector3(0, 1, 0), randf() * deg_to_rad(spinbox_jitter_y.value))
@@ -842,7 +778,7 @@ func place_fence():
 			position
 		))
 
-		undo_redo.add_undo_method(scene_root, "remove_child", instance)
+		undo_redo.add_undo_method(p, "remove_child", instance)
 
 	print("[SceneBuilderDock] Commiting action")
 	undo_redo.commit_action()
@@ -851,6 +787,8 @@ func reroll_preview_instance_transform() -> void:
 	if preview_instance == null:
 		printerr("[SceneBuilderDock] preview_instance is null inside reroll_preview_instance_transform()")
 		return
+		
+	preview_temp_parent.transform = Transform3D.IDENTITY
 
 	random_offset_y = rng.randf_range(items[selected_item_id].random_offset_y_min, items[selected_item_id].random_offset_y_max)
 
@@ -858,24 +796,30 @@ func reroll_preview_instance_transform() -> void:
 		var random_scale: float = rng.randf_range(items[selected_item_id].random_scale_min, items[selected_item_id].random_scale_max)
 		original_preview_scale = Vector3(random_scale, random_scale, random_scale)
 
-	preview_instance.scale = original_preview_scale
+	preview_temp_parent.scale = original_preview_scale
 
 	if items[selected_item_id].use_random_rotation:
 		var x_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_x)
 		var y_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_y)
 		var z_rot: float = rng.randf_range(0, items[selected_item_id].random_rot_z)
-		preview_instance.rotation = snap_rot(Vector3(deg_to_rad(x_rot), deg_to_rad(y_rot), deg_to_rad(z_rot)))
-		original_preview_basis = preview_instance.basis
+		preview_temp_parent.rotation = snap_rot(Vector3(deg_to_rad(x_rot), deg_to_rad(y_rot), deg_to_rad(z_rot)))
+		original_preview_basis = preview_temp_parent.basis
 
-	original_preview_basis = preview_instance.basis
+	original_preview_basis = preview_temp_parent.basis
 
 func select_item(item_id: int) -> void:
 	end_placement_mode()
 	if len(EditorInterface.get_selection().get_selected_nodes()) == 0:
 		EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
-	if not selected_parent():
+	var base_parent = selected_parent()
+	if not base_parent:
+		print("A Node3D parent not selected in the scene tree!")
 		return
-	selected_parent().set_meta("_edit_lock_", true)
+	base_parent.set_meta("_edit_lock_", true)
+	preview_temp_parent = Node3D.new()
+	preview_temp_parent.name = "_PreviewTempParent"
+	base_parent.add_child(preview_temp_parent)
+	preview_temp_parent.owner = EditorInterface.get_edited_scene_root()
 	if item_id < 0 or item_id >= len(items):
 		print("Item ", item_id, " doesn't exist, can't select.")
 		return
@@ -883,7 +827,7 @@ func select_item(item_id: int) -> void:
 	nine_patch.modulate.a = 1
 	nine_patch.self_modulate = Color.DARK_ORANGE
 	selected_item_id = item_id
-	placement_mode_enabled = true;
+	placement_mode_enabled = true; # absically start_placement_mode
 	create_preview_instance()
 
 func select_first_item() -> void:

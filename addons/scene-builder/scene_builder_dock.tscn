@@ -149,18 +149,6 @@ size_flags_horizontal = 3
 text = "🛠️Command list"
 flat = false
 
-[node name="FindWorld3D" type="Button" parent="Settings/Tab/Options/Bottom"]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 2
-text = "Find world 3d"
-
-[node name="EmptySpace2" type="Label" parent="Settings/Tab/Options/Bottom"]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-
 [node name="ReloadAllItems" type="Button" parent="Settings/Tab/Options/Bottom"]
 layout_mode = 2
 size_flags_horizontal = 3

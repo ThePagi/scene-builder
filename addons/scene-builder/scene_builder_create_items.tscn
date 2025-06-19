@@ -22,8 +22,9 @@ size_flags_horizontal = 3
 text = "Unnamed"
 alignment = 1
 
-[node name="SnapToGrid" type="HBoxContainer" parent="."]
+[node name="SnapToGrid" type="GridContainer" parent="."]
 layout_mode = 2
+columns = 9
 
 [node name="Label" type="Label" parent="SnapToGrid"]
 layout_mode = 2
@@ -67,30 +68,37 @@ layout_mode = 2
 max_value = 360.0
 rounded = true
 
-[node name="SnapAuto" type="HBoxContainer" parent="."]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="SnapAuto"]
+[node name="Label6" type="Label" parent="SnapToGrid"]
 layout_mode = 2
 text = "Auto snap"
 
-[node name="x" type="CheckButton" parent="SnapAuto"]
+[node name="Label7" type="Label" parent="SnapToGrid"]
 layout_mode = 2
-size_flags_horizontal = 0
 text = "x"
 
-[node name="y" type="CheckButton" parent="SnapAuto"]
+[node name="autox" type="CheckButton" parent="SnapToGrid"]
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 6
+
+[node name="Label8" type="Label" parent="SnapToGrid"]
+layout_mode = 2
 text = "y"
 
-[node name="z" type="CheckButton" parent="SnapAuto"]
+[node name="autoy" type="CheckButton" parent="SnapToGrid"]
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 6
+
+[node name="Label9" type="Label" parent="SnapToGrid"]
+layout_mode = 2
 text = "z"
 
-[node name="SnapOffset" type="HBoxContainer" parent="."]
+[node name="autoz" type="CheckButton" parent="SnapToGrid"]
 layout_mode = 2
+size_flags_horizontal = 6
+
+[node name="SnapOffset" type="GridContainer" parent="."]
+layout_mode = 2
+columns = 7
 
 [node name="Label" type="Label" parent="SnapOffset"]
 layout_mode = 2
@@ -104,7 +112,7 @@ text = "x"
 
 [node name="x" type="SpinBox" parent="SnapOffset"]
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 6
 allow_greater = true
 
 [node name="Label3" type="Label" parent="SnapOffset"]
@@ -114,7 +122,7 @@ text = "y"
 
 [node name="y" type="SpinBox" parent="SnapOffset"]
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 6
 allow_greater = true
 
 [node name="Label4" type="Label" parent="SnapOffset"]
@@ -124,8 +132,36 @@ text = "z"
 
 [node name="z" type="SpinBox" parent="SnapOffset"]
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 6
 allow_greater = true
+
+[node name="Label6" type="Label" parent="SnapOffset"]
+layout_mode = 2
+text = "Auto offset"
+
+[node name="Label7" type="Label" parent="SnapOffset"]
+layout_mode = 2
+text = "x"
+
+[node name="autox" type="CheckButton" parent="SnapOffset"]
+layout_mode = 2
+size_flags_horizontal = 6
+
+[node name="Label8" type="Label" parent="SnapOffset"]
+layout_mode = 2
+text = "y"
+
+[node name="autoy" type="CheckButton" parent="SnapOffset"]
+layout_mode = 2
+size_flags_horizontal = 6
+
+[node name="Label9" type="Label" parent="SnapOffset"]
+layout_mode = 2
+text = "z"
+
+[node name="autoz" type="CheckButton" parent="SnapOffset"]
+layout_mode = 2
+size_flags_horizontal = 6
 
 [node name="Boolean" type="HBoxContainer" parent="."]
 layout_mode = 2

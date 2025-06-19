@@ -21,6 +21,9 @@ var snap_angle: SpinBox
 var snapx_offset: SpinBox
 var snapy_offset: SpinBox
 var snapz_offset: SpinBox
+var autox_offset: CheckButton
+var autoy_offset: CheckButton
+var autoz_offset: CheckButton
 var randomize_vertical_offset_checkbox: CheckButton
 var randomize_rotation_checkbox: CheckButton
 var randomize_scale_checkbox: CheckButton
@@ -63,12 +66,15 @@ func execute(root_dir: String):
 	snapx = create_items.get_node("SnapToGrid/x")
 	snapy = create_items.get_node("SnapToGrid/y")
 	snapz = create_items.get_node("SnapToGrid/z")
-	auto_snapx = create_items.get_node("SnapAuto/x")
-	auto_snapy = create_items.get_node("SnapAuto/y")
-	auto_snapz = create_items.get_node("SnapAuto/z")
+	auto_snapx = create_items.get_node("SnapToGrid/autox")
+	auto_snapy = create_items.get_node("SnapToGrid/autoy")
+	auto_snapz = create_items.get_node("SnapToGrid/autoz")
 	snapx_offset = create_items.get_node("SnapOffset/x")
 	snapy_offset = create_items.get_node("SnapOffset/y")
 	snapz_offset = create_items.get_node("SnapOffset/z")
+	autox_offset = create_items.get_node("SnapOffset/autox")
+	autoy_offset = create_items.get_node("SnapOffset/autoy")
+	autoz_offset = create_items.get_node("SnapOffset/autoz")
 	snap_angle = create_items.get_node("SnapToGrid/angle")
 	randomize_vertical_offset_checkbox = create_items.get_node("Boolean/VerticalOffset")
 	randomize_rotation_checkbox = create_items.get_node("Boolean/Rotation")
@@ -212,6 +218,12 @@ func _create_resource(path: String):
 			resource.snap_to_grid.y = aabb.size.y
 		if auto_snapz.button_pressed:
 			resource.snap_to_grid.z = aabb.size.z
+		if autox_offset.button_pressed:
+			resource.snap_offset.x = -aabb.get_center().x
+		if autoy_offset.button_pressed:
+			resource.snap_offset.y = -aabb.get_center().y
+		if autoz_offset.button_pressed:
+			resource.snap_offset.z = -aabb.get_center().z
 		var save_path: String = path_root + resource.collection_name + "/%s.res" % resource.item_name
 		ResourceSaver.save(resource, save_path)
 		var fs = EditorInterface.get_resource_filesystem()
