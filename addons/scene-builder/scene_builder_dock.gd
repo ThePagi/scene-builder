@@ -1,25 +1,28 @@
 @tool
-extends EditorPlugin
+extends Control
 class_name SceneBuilderDock
 
 @onready var config: SceneBuilderConfig = SceneBuilderConfig.new()
 
+var plugin: EditorPlugin
+
 # Paths
 var data_dir: String = ""
 var path_to_collection_names: String
+var editor: EditorInterface
+var undo_redo: EditorUndoRedoManager
 
 # Constants
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var toolbox: SceneBuilderToolbox = SceneBuilderToolbox.new()
-var undo_redo: EditorUndoRedoManager = get_undo_redo()
+
 
 # Godot controls
 var base_control: Control
 var btn_use_local_space: Button
 
 # SceneBuilderDock controls
-var scene_builder_dock: VBoxContainer
 var btns_collection_tabs: Array = [] # set in _enter_tree()
 var commands: SceneBuilderCommands
 # Options
@@ -49,7 +52,6 @@ var lbl_indicator_z: Label
 var lbl_indicator_scale: Label
 
 # Updated with selected_parent()
-var editor: EditorInterface
 var physics_space: PhysicsDirectSpaceState3D
 var world3d: World3D
 var viewport: Viewport
@@ -116,10 +118,11 @@ func selected_parent()->Node3D:
 		
 		var node = sel[0]
 		var node_name := node.get_class().split(".")[-1]
-		var node_icon := get_editor_interface().get_base_control().get_theme_icon(node_name, "EditorIcons")
+		var base = plugin.get_editor_interface().get_base_control()
+		var node_icon := base.get_theme_icon(node_name, "EditorIcons")
 		
-		if node_icon == get_editor_interface().get_base_control().get_theme_icon("invalid icon", "EditorIcons"):
-			node_icon = get_editor_interface().get_base_control().get_theme_icon("Node", "EditorIcons")
+		if node_icon == base.get_theme_icon("invalid icon", "EditorIcons"):
+			node_icon = base.get_theme_icon("Node", "EditorIcons")
 		
 		btn_parent_node_selector.set_node_info(node.name, node_icon)
 		return node
@@ -127,19 +130,23 @@ func selected_parent()->Node3D:
 		btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
 		return null
 
-func set_commands(cmd: SceneBuilderCommands):
+func init(p: EditorPlugin, cmd: SceneBuilderCommands, cfg: SceneBuilderConfig):
+	plugin = p
+	undo_redo = plugin.get_undo_redo()
+	editor = plugin.get_editor_interface()
 	commands = cmd
+	config = cfg
 	
 # ---- Notifications -----------------------------------------------------------
 
 func _enter_tree() -> void:
 	path_to_collection_names = config.root_dir + "collection_names.tres"
 	
-	editor = get_editor_interface()
+	
 	base_control = EditorInterface.get_base_control()
 
 	# Found using: https://github.com/Zylann/godot_editor_debugger_plugin
-	var _panel : Panel = get_editor_interface().get_base_control()
+	var _panel : Panel = editor.get_base_control()
 	var _vboxcontainer15 : VBoxContainer = _panel.get_child(0)
 	var _vboxcontainer26 : VBoxContainer = _vboxcontainer15.get_child(1).get_child(1).get_child(1).get_child(0)
 	var _main_screen : VBoxContainer = _vboxcontainer26.get_child(0).get_child(0).get_child(0).get_child(1).get_child(0)
@@ -154,19 +161,15 @@ func _enter_tree() -> void:
 	var path : String = SceneBuilderToolbox.find_resource_with_dynamic_path("scene_builder_dock.tscn")
 	if path == "":
 		printerr("[SceneBuilderDock] scene_builder_dock.tscn was not found")
-		return
-	
-	scene_builder_dock = load(path).instantiate()
-	
-	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, scene_builder_dock)
+		return	
 
 	# Options tab
-	btn_use_surface_normal = scene_builder_dock.get_node("%UseSurfaceNormal")
-	btn_surface_normal_x = scene_builder_dock.get_node("%Orientation/X")
-	btn_surface_normal_y = scene_builder_dock.get_node("%Orientation/Y")
-	btn_surface_normal_z = scene_builder_dock.get_node("%Orientation/Z")
+	btn_use_surface_normal = ($"%UseSurfaceNormal")
+	btn_surface_normal_x = ($"%Orientation/X")
+	btn_surface_normal_y = ($"%Orientation/Y")
+	btn_surface_normal_z = ($"%Orientation/Z")
 	
-	btn_parent_node_selector = scene_builder_dock.get_node("%ParentNodeSelector")
+	btn_parent_node_selector = ($"%ParentNodeSelector")
 	var script_path = SceneBuilderToolbox.find_resource_with_dynamic_path("scene_builder_node_path_selector.gd")
 	if script_path != "":
 		btn_parent_node_selector.set_script(load(script_path))
@@ -180,29 +183,29 @@ func _enter_tree() -> void:
 	btn_surface_normal_y.button_group = btn_group_surface_orientation
 	btn_surface_normal_z.button_group = btn_group_surface_orientation
 	#
-	btn_reload_all_items = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/ReloadAllItems")
+	btn_reload_all_items = ($"Settings/Tab/Options/Bottom/ReloadAllItems")
 	btn_reload_all_items.pressed.connect(reload_all_items)
-	menu_command_popup = scene_builder_dock.get_node("Settings/Tab/Options/Bottom/CommandsPopup")
+	menu_command_popup = ($"Settings/Tab/Options/Bottom/CommandsPopup")
 	commands.fill_popup(menu_command_popup.get_popup())
-	btn_cmd_create_items = scene_builder_dock.get_node("Settings/Tab/Options/QuickCommands/CreateItems")
+	btn_cmd_create_items = ($"Settings/Tab/Options/QuickCommands/CreateItems")
 	btn_cmd_create_items.pressed.connect(commands.create_scene_builder_items)
-	icon_size = scene_builder_dock.get_node("Settings/Tab/Options/FirstRow/HBox/IconSize")
+	icon_size = ($"Settings/Tab/Options/FirstRow/HBox/IconSize")
 	icon_size.value_changed.connect(resize_icons)
-	btn_replace_overlapping = scene_builder_dock.get_node("Settings/Tab/Options/FirstRow/HBox/ReplaceOverlapping")
+	btn_replace_overlapping = ($"Settings/Tab/Options/FirstRow/HBox/ReplaceOverlapping")
 	# Path3D tab
-	spinbox_separation_distance = scene_builder_dock.get_node("Settings/Tab/Path3D/Separation/SpinBox")
-	spinbox_jitter_x = scene_builder_dock.get_node("Settings/Tab/Path3D/Jitter/X")
-	spinbox_jitter_y = scene_builder_dock.get_node("Settings/Tab/Path3D/Jitter/Y")
-	spinbox_jitter_z = scene_builder_dock.get_node("Settings/Tab/Path3D/Jitter/Z")
-	spinbox_y_offset = scene_builder_dock.get_node("Settings/Tab/Path3D/YOffset/Value")
-	btn_place_fence = scene_builder_dock.get_node("Settings/Tab/Path3D/PlaceFence")
+	spinbox_separation_distance = ($"Settings/Tab/Path3D/Separation/SpinBox")
+	spinbox_jitter_x = ($"Settings/Tab/Path3D/Jitter/X")
+	spinbox_jitter_y = ($"Settings/Tab/Path3D/Jitter/Y")
+	spinbox_jitter_z = ($"Settings/Tab/Path3D/Jitter/Z")
+	spinbox_y_offset = ($"Settings/Tab/Path3D/YOffset/Value")
+	btn_place_fence = ($"Settings/Tab/Path3D/PlaceFence")
 	btn_place_fence.pressed.connect(place_fence)
 
 	# Indicators
-	lbl_indicator_x = scene_builder_dock.get_node("Settings/Indicators/1")
-	lbl_indicator_y = scene_builder_dock.get_node("Settings/Indicators/2")
-	lbl_indicator_z = scene_builder_dock.get_node("Settings/Indicators/3")
-	lbl_indicator_scale = scene_builder_dock.get_node("Settings/Indicators/4")
+	lbl_indicator_x = ($"Settings/Indicators/1")
+	lbl_indicator_y = ($"Settings/Indicators/2")
+	lbl_indicator_z = ($"Settings/Indicators/3")
+	lbl_indicator_scale = ($"Settings/Indicators/4")
 
 	#endregion
 
@@ -212,12 +215,9 @@ func _enter_tree() -> void:
 
 
 func resize_icons(value: float):
-	for c in scene_builder_dock.get_node("Collection/Scroll/Grid").get_children():
+	for c in ($"Collection/Scroll/Grid").get_children():
 		(c as Control).custom_minimum_size = Vector2(value, value)
 
-func _exit_tree() -> void:
-	remove_control_from_docks(scene_builder_dock)
-	scene_builder_dock.queue_free()
 
 func _process(_delta: float) -> void:
 	var sel_parent = selected_parent()
@@ -248,7 +248,7 @@ func _process(_delta: float) -> void:
 					elif btn_surface_normal_z.button_pressed:
 						quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
 
-func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput:
+func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> EditorPlugin.AfterGUIInput:
 	if event is InputEventMouseMotion:
 		if placement_mode_enabled:
 			var relative_motion: float
@@ -319,7 +319,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 								end_placement_mode()
 								return EditorPlugin.AFTER_GUI_INPUT_STOP
 
-	elif event is InputEventKey:
+	elif event is InputEventKey and placement_mode_enabled:
 		if event.is_pressed() and !event.is_echo():
 			if !event.alt_pressed and !event.ctrl_pressed:
 				if event.shift_pressed:
@@ -429,12 +429,12 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> AfterGUIInput
 
 func select_collection(tab_index: int) -> void:
 	end_placement_mode()
-	for c in scene_builder_dock.get_node("Collection/Panel/Cats").get_children():
+	for c in ($"Collection/Panel/Cats").get_children():
 		(c as Button).modulate = Color.WHITE
 	if tab_index < 0 or tab_index >= len(collection_names):
 		print("Selected collection out of bounds")
 		return
-	scene_builder_dock.get_node("Collection/Panel/Cats").get_child(tab_index).modulate = Color.AQUAMARINE
+	($"Collection/Panel/Cats").get_child(tab_index).modulate = Color.AQUAMARINE
 	selected_collection_id = tab_index
 	reload_all_items()
 
@@ -455,7 +455,7 @@ func on_item_icon_clicked(item_id: int) -> void:
 
 func reload_all_items() -> void:
 	load_or_make_collections()
-	var grid = scene_builder_dock.get_node("Collection/Scroll/Grid")
+	var grid = ($"Collection/Scroll/Grid")
 	for c in grid.get_children():
 		c.queue_free()
 	if selected_collection_id >= len(collection_names):
@@ -721,7 +721,7 @@ func load_or_make_collections() -> void:
 	collections = _cols
 	collection_names.clear()
 	collection_colors.clear()
-	var cat_parent = scene_builder_dock.get_node("Collection/Panel/Cats")
+	var cat_parent = ($"Collection/Panel/Cats")
 	for c in cat_parent.get_children():
 		c.queue_free()
 	var names = collections.names_and_colors.keys().duplicate()
@@ -899,10 +899,6 @@ func get_instance_from_path(_uid: String) -> Node3D:
 	return null
 
 # --
-
-func update_config(_config: SceneBuilderConfig) -> void:
-	config = _config
-
 
 func reset_indicators() -> void:
 	lbl_indicator_x.self_modulate = Color.WHITE
