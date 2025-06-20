@@ -234,7 +234,7 @@ func _process(_delta: float) -> void:
 				var p = result.position
 				if preview_temp_parent.get_parent_node_3d():
 					p = preview_temp_parent.get_parent_node_3d().to_local(p)
-				var new_position: Vector3 = snap(items[selected_item_id].snap_offset + p)
+				var new_position: Vector3 = snap(p-items[selected_item_id].snap_offset)+items[selected_item_id].snap_offset
 				# This offset prevents z-fighting when placing overlapping quads
 				if items[selected_item_id].use_random_vertical_offset:
 					new_position.y += random_offset_y
@@ -542,7 +542,7 @@ func create_preview_instance() -> void:
 	preview_instance = get_instance_from_path(items[selected_item_id].uid)
 	preview_temp_parent.add_child(preview_instance)
 	preview_instance.owner = EditorInterface.get_edited_scene_root()
-	preview_instance.position = Vector3.ZERO
+	preview_instance.position = items[selected_item_id].snap_offset
 	preview_instance.rotation = Vector3.ZERO
 	original_preview_basis = Basis()
 	original_preview_scale = Vector3.ONE
