@@ -710,8 +710,6 @@ func load_or_make_collections() -> void:
 		var _collection_names: CollectionNames = CollectionNames.new()
 		print("[SceneBuilderDock] path_to_collection_names: ", path_to_collection_names)
 		var save_result = ResourceSaver.save(_collection_names, path_to_collection_names)
-		print("[SceneBuilderDock] A CollectionNames resource has been created at location: ", path_to_collection_names)
-
 		if save_result != OK:
 			printerr("[SceneBuilderDock] We were unable to create a CollectionNames resource at location: ", path_to_collection_names)
 			return
