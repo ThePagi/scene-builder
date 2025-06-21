@@ -539,7 +539,7 @@ func create_preview_instance() -> void:
 
 	clear_preview_instance()
 
-	preview_instance = get_instance_from_path(items[selected_item_id].uid)
+	preview_instance = make_item_instance(items[selected_item_id])
 	preview_temp_parent.add_child(preview_instance)
 	preview_instance.owner = EditorInterface.get_edited_scene_root()
 	preview_instance.position = items[selected_item_id].snap_offset
@@ -639,7 +639,7 @@ func instantiate_selected_item_at_position() -> void:
 	var result = perform_raycast_with_exclusion(preview_instance_rid_array)
 	# todo remove the raycast cos we do it each frame anyway
 	if result and result.collider:
-		var instance = get_instance_from_path(items[selected_item_id].uid)
+		var instance = make_item_instance(items[selected_item_id])
 		var parent = selected_parent()
 		if not parent:
 			printerr("Valid parent not selected.")
@@ -765,7 +765,7 @@ func place_fence():
 		var basis: Basis = transform.basis.rotated(Vector3(0, 1, 0), deg_to_rad(spinbox_y_offset.value))
 
 		var chosen_item: SceneBuilderItem = items.pick_random()
-		var instance = get_instance_from_path(chosen_item.uid)
+		var instance = make_item_instance(chosen_item)
 		var p = selected_parent()
 		undo_redo.add_do_method(p, "add_child", instance)
 		undo_redo.add_do_method(instance, "set_owner", p)
@@ -874,29 +874,12 @@ func start_transform_mode(mode: TransformMode) -> void:
 			lbl_indicator_scale.self_modulate = Color.GREEN
 
 
-func get_instance_from_path(_uid: String) -> Node3D:
-	var uid: int = ResourceUID.text_to_id(_uid)
+func make_item_instance(item: SceneBuilderItem) -> Node3D:
 
-	var path: String = ""
-	if ResourceUID.has_id(uid):
-		path = ResourceUID.get_id_path(uid)
-	else:
-		printerr("[SceneBuilderDock] Does not have uid: ", ResourceUID.id_to_text(uid))
-		return
-
-	if ResourceLoader.exists(path):
-		var loaded = load(path)
-		if loaded is PackedScene:
-			var instance = loaded.instantiate()
-			if instance is Node3D:
-				return instance
-			else:
-				printerr("[SceneBuilderDock] The instantiated scene's root is not a Node3D: ", loaded.name)
-		else:
-			printerr("[SceneBuilderDock] Loaded resource is not a PackedScene: ", path)
-	else:
-		printerr("[SceneBuilderDock] Path does not exist: ", path)
-	return null
+	if not item.prefab or item.prefab is not PackedScene or not item.prefab.can_instantiate():
+		printerr("Item scene not a PackedScene, is it missing?")
+		return null
+	return item.prefab.instantiate()
 
 # --
 

@@ -6,7 +6,7 @@ class_name SceneBuilderItem
 #@export var scene_path : String = ""
 
 @export var texture: Texture
-@export var uid: String
+@export var prefab: PackedScene
 
 # per-item position+rotation snapping
 @export var snap_to_grid: Vector3

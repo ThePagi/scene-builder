@@ -132,14 +132,16 @@ func _create_resource(path: String):
 	var resource: SceneBuilderItem = load(scene_builder_item_path).new()
 
 	if ResourceLoader.exists(path):
-		var packed_scene: PackedScene = load(path)
-
-		if packed_scene == null:
+		var packed_scene = load(path)
+		if packed_scene == null or packed_scene is not PackedScene or not packed_scene.can_instantiate():
+			printerr("'", path.get_file(), "' does not exist or is not a scene.")
 			return
-
+		var instance = packed_scene.instantiate()
+		if instance is not Node3D:
+			printerr("'", path.get_file(), "' A scene must inherit from Node3D to make a scene-builder item!")
+			return
 		# Populate resource
-		var uid = ResourceUID.id_to_text(ResourceLoader.get_resource_uid(path))
-		resource.uid = uid
+		resource.prefab = packed_scene
 		resource.item_name = path.get_file().get_basename()
 		if collection_line_edit.text.is_empty():
 			print("[Create Scene Builder Items] Collection name was not given, using: Unnamed")
@@ -167,7 +169,7 @@ func _create_resource(path: String):
 		#region Create icon
 
 		# Add packed_scene to studio scene
-		var subject: Node3D = packed_scene.instantiate()
+		var subject: Node3D = instance
 		icon_studio.add_child(subject)
 		subject.owner = icon_studio
 		
