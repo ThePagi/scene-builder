@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://x8g21udghd81"]
+[gd_scene load_steps=4 format=3 uid="uid://x8g21udghd81"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_af5qv"]
 bg_color = Color(0.5, 0.5, 0.5, 0.078431375)
@@ -6,6 +6,8 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_af5qv"]
 
 [sub_resource type="GDScript" id="GDScript_af5qv"]
 script/source = "@tool
@@ -34,6 +36,11 @@ layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
+[node name="HSeparator2" type="HSeparator" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = -7001
+theme_override_styles/separator = SubResource("StyleBoxEmpty_af5qv")
+
 [node name="Collection" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
@@ -47,45 +54,61 @@ size_flags_horizontal = 3
 text = "Unnamed"
 alignment = 1
 
+[node name="Control" type="Control" parent="VBox/Collection"]
+layout_mode = 2
+
 [node name="SnapToGrid" type="GridContainer" parent="VBox"]
 layout_mode = 2
-columns = 9
+size_flags_horizontal = 0
+columns = 6
+
+[node name="Label6" type="Label" parent="VBox/SnapToGrid"]
+layout_mode = 2
+text = "Auto snap"
+
+[node name="autox" type="CheckBox" parent="VBox/SnapToGrid"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "auto X"
+
+[node name="autoy" type="CheckBox" parent="VBox/SnapToGrid"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "auto Y"
+
+[node name="autoz" type="CheckBox" parent="VBox/SnapToGrid"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "auto Z"
+
+[node name="Control" type="Control" parent="VBox/SnapToGrid"]
+layout_mode = 2
+
+[node name="Control2" type="Control" parent="VBox/SnapToGrid"]
+layout_mode = 2
 
 [node name="Label" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Snap to grid"
 
-[node name="Label2" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "x"
-
 [node name="x" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 allow_greater = true
-
-[node name="Label3" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "y"
+script = SubResource("GDScript_af5qv")
 
 [node name="y" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 allow_greater = true
-
-[node name="Label4" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "z"
+script = SubResource("GDScript_af5qv")
 
 [node name="z" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 allow_greater = true
+script = SubResource("GDScript_af5qv")
 
 [node name="Label5" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
-size_flags_horizontal = 3
 text = "rotation"
 
 [node name="angle" type="SpinBox" parent="VBox/SnapToGrid"]
@@ -93,36 +116,9 @@ layout_mode = 2
 max_value = 360.0
 rounded = true
 
-[node name="Label6" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-text = "Auto snap"
-
-[node name="Label7" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-text = "x"
-
-[node name="autox" type="CheckButton" parent="VBox/SnapToGrid"]
-layout_mode = 2
-size_flags_horizontal = 6
-
-[node name="Label8" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-text = "y"
-
-[node name="autoy" type="CheckButton" parent="VBox/SnapToGrid"]
-layout_mode = 2
-size_flags_horizontal = 6
-
-[node name="Label9" type="Label" parent="VBox/SnapToGrid"]
-layout_mode = 2
-text = "z"
-
-[node name="autoz" type="CheckButton" parent="VBox/SnapToGrid"]
-layout_mode = 2
-size_flags_horizontal = 6
-
 [node name="SnapOffset" type="GridContainer" parent="VBox"]
 layout_mode = 2
+size_flags_horizontal = 0
 columns = 4
 
 [node name="Label6" type="Label" parent="VBox/SnapOffset"]
@@ -132,17 +128,17 @@ text = "Auto offset"
 [node name="autox" type="CheckBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
-text = "auto x"
+text = "auto X"
 
 [node name="autoy" type="CheckBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
-text = "auto y"
+text = "auto X"
 
 [node name="autoz" type="CheckBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
-text = "auto z"
+text = "auto Z"
 
 [node name="Label" type="Label" parent="VBox/SnapOffset"]
 layout_mode = 2
@@ -301,6 +297,9 @@ size_flags_horizontal = 4
 size_flags_vertical = 4
 text = "Create scene builder items with icons"
 
+[connection signal="toggled" from="VBox/SnapToGrid/autox" to="VBox/SnapToGrid/x" method="disable"]
+[connection signal="toggled" from="VBox/SnapToGrid/autoy" to="VBox/SnapToGrid/y" method="disable"]
+[connection signal="toggled" from="VBox/SnapToGrid/autoz" to="VBox/SnapToGrid/z" method="disable"]
 [connection signal="toggled" from="VBox/SnapOffset/autox" to="VBox/SnapOffset/x" method="disable"]
 [connection signal="toggled" from="VBox/SnapOffset/autoy" to="VBox/SnapOffset/y" method="disable"]
 [connection signal="toggled" from="VBox/SnapOffset/autoz" to="VBox/SnapOffset/z" method="disable"]
