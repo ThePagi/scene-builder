@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://18pjyynbqqci"]
+[gd_scene load_steps=4 format=3 uid="uid://18pjyynbqqci"]
 
 [ext_resource type="Script" uid="uid://ctcx2pqfgnaxx" path="res://addons/scene-builder/addons/scene-builder/scene_builder_dock.gd" id="1_pmhl4"]
+[ext_resource type="Resource" uid="uid://d4jr8ot7ggqbf" path="res://addons/scene-builder/addons/scene-builder/scene_builder_config.tres" id="2_ckbdu"]
+[ext_resource type="Script" uid="uid://ciuy3glceywqd" path="res://addons/scene-builder/addons/scene-builder/scene_builder_node_path_selector.gd" id="3_foybg"]
 
 [node name="Scene Builder" type="VBoxContainer"]
 custom_minimum_size = Vector2(352, 0)
@@ -11,6 +13,7 @@ offset_right = -800.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_pmhl4")
+config = ExtResource("2_ckbdu")
 
 [node name="ParentNode" type="HBoxContainer" parent="."]
 layout_mode = 2
@@ -30,6 +33,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "(root)"
 text_overrun_behavior = 3
+script = ExtResource("3_foybg")
 
 [node name="HSeparator3" type="HSeparator" parent="."]
 layout_mode = 2
@@ -68,9 +72,10 @@ layout_mode = 2
 [node name="Tab" type="TabContainer" parent="Settings"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
-current_tab = 0
+current_tab = 1
 
 [node name="Options" type="VBoxContainer" parent="Settings/Tab"]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -165,10 +170,55 @@ layout_mode = 2
 tooltip_text = "Opens item creation menu for the scene files selected in the FileSystem."
 text = "Create items"
 
+[node name="Plane" type="VBoxContainer" parent="Settings/Tab"]
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="EnablePlane" type="CheckButton" parent="Settings/Tab/Plane"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+button_pressed = true
+text = "Enable ground plane"
+
+[node name="HBox" type="HBoxContainer" parent="Settings/Tab/Plane"]
+layout_mode = 2
+tooltip_text = "The global Y coordinate (height) of the plane."
+
+[node name="Label" type="Label" parent="Settings/Tab/Plane/HBox"]
+layout_mode = 2
+text = "Plane Y position"
+
+[node name="PlaneYPos" type="SpinBox" parent="Settings/Tab/Plane/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = -100.0
+allow_greater = true
+allow_lesser = true
+
+[node name="HBox2" type="HBoxContainer" parent="Settings/Tab/Plane"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Settings/Tab/Plane/HBox2"]
+layout_mode = 2
+text = "Interaction mode"
+
+[node name="PlaneMode" type="OptionButton" parent="Settings/Tab/Plane/HBox2"]
+unique_name_in_owner = true
+layout_mode = 2
+selected = 0
+item_count = 3
+popup/item_0/text = "Prefer colliders"
+popup/item_0/id = 0
+popup/item_1/text = "Closest wins"
+popup/item_1/id = 1
+popup/item_2/text = "Ignore colliders"
+popup/item_2/id = 2
+
 [node name="Path3D" type="VBoxContainer" parent="Settings/Tab"]
 visible = false
 layout_mode = 2
-metadata/_tab_index = 1
+metadata/_tab_index = 2
 
 [node name="Separation" type="HBoxContainer" parent="Settings/Tab/Path3D"]
 layout_mode = 2

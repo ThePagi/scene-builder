@@ -2,7 +2,7 @@
 extends Control
 class_name SceneBuilderDock
 
-@onready var config: SceneBuilderConfig = SceneBuilderConfig.new()
+@export var config: SceneBuilderConfig
 
 var plugin: EditorPlugin
 
@@ -30,7 +30,7 @@ var btn_use_surface_normal: CheckButton
 var btn_surface_normal_x: CheckBox
 var btn_surface_normal_y: CheckBox
 var btn_surface_normal_z: CheckBox
-var btn_parent_node_selector: Button
+var btn_parent_node_selector: ParentNodeSelector
 var btn_group_surface_orientation: ButtonGroup
 var btn_reload_all_items: Button
 var menu_command_popup: MenuButton
@@ -109,7 +109,8 @@ func selected_parent()->Node3D:
 	#	sel = EditorInterface.get_selection().get_selected_nodes()
 	if len(sel) == 1:
 		if sel[0] is not Node3D:
-			btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
+			if btn_parent_node_selector:
+				btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
 			return null
 		viewport = EditorInterface.get_editor_viewport_3d()
 		world3d = viewport.find_world_3d()
@@ -123,11 +124,12 @@ func selected_parent()->Node3D:
 		
 		if node_icon == base.get_theme_icon("invalid icon", "EditorIcons"):
 			node_icon = base.get_theme_icon("Node", "EditorIcons")
-		
-		btn_parent_node_selector.set_node_info(node.name, node_icon)
+		if btn_parent_node_selector:
+			btn_parent_node_selector.set_node_info(node.name, node_icon)
 		return node
 	else:
-		btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
+		if btn_parent_node_selector:
+			btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
 		return null
 
 func init(p: EditorPlugin, cmd: SceneBuilderCommands, cfg: SceneBuilderConfig):
@@ -164,18 +166,12 @@ func _enter_tree() -> void:
 		return	
 
 	# Options tab
-	btn_use_surface_normal = ($"%UseSurfaceNormal")
-	btn_surface_normal_x = ($"%Orientation/X")
-	btn_surface_normal_y = ($"%Orientation/Y")
-	btn_surface_normal_z = ($"%Orientation/Z")
+	btn_use_surface_normal = %UseSurfaceNormal
+	btn_surface_normal_x = %Orientation/X
+	btn_surface_normal_y = %Orientation/Y
+	btn_surface_normal_z = %Orientation/Z
 	
-	btn_parent_node_selector = ($"%ParentNodeSelector")
-	var script_path = SceneBuilderToolbox.find_resource_with_dynamic_path("scene_builder_node_path_selector.gd")
-	if script_path != "":
-		btn_parent_node_selector.set_script(load(script_path))
-		#btn_parent_node_selector.path_selected.connect(set_parent_node)
-	else:
-		printerr("[SceneBuilderDock] Failed to find scene_builder_node_path_selector.gd")
+	btn_parent_node_selector = %ParentNodeSelector
 	
 	#
 	btn_group_surface_orientation = ButtonGroup.new()
@@ -226,27 +222,26 @@ func _process(_delta: float) -> void:
 		if sel_parent:
 			prev_parent = sel_parent
 	# Update preview item position
-	if placement_mode_enabled:
-		if !is_transform_mode_enabled():
-			populate_preview_instance_rid_array(preview_instance)
-			var result = perform_raycast_with_exclusion(preview_instance_rid_array)
-			if result and result.collider:
-				var p = result.position
-				if preview_temp_parent.get_parent_node_3d():
-					p = preview_temp_parent.get_parent_node_3d().to_local(p)
-				var new_position: Vector3 = snap(p-items[selected_item_id].snap_offset)+items[selected_item_id].snap_offset
-				# This offset prevents z-fighting when placing overlapping quads
-				if items[selected_item_id].use_random_vertical_offset:
-					new_position.y += random_offset_y
+	if placement_mode_enabled and not is_transform_mode_enabled():
+		populate_preview_instance_rid_array(preview_instance)
+		var result = perform_raycast_with_exclusion(preview_instance_rid_array)
+		if result and result.position:
+			var p = result.position
+			if preview_temp_parent.get_parent_node_3d():
+				p = preview_temp_parent.get_parent_node_3d().to_local(p)
+			var new_position: Vector3 = snap(p-items[selected_item_id].snap_offset)+items[selected_item_id].snap_offset
+			# This offset prevents z-fighting when placing overlapping quads
+			if items[selected_item_id].use_random_vertical_offset:
+				new_position.y += random_offset_y
 
-				preview_temp_parent.position =  new_position
-				if btn_use_surface_normal.button_pressed:
-					preview_temp_parent.basis = align_up(preview_temp_parent.global_transform.basis, result.normal)
-					var quaternion = Quaternion(preview_temp_parent.basis.orthonormalized())
-					if btn_surface_normal_x.button_pressed:
-						quaternion = quaternion * Quaternion(Vector3(1, 0, 0), deg_to_rad(90))
-					elif btn_surface_normal_z.button_pressed:
-						quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
+			preview_temp_parent.position =  new_position
+			if btn_use_surface_normal.button_pressed:
+				preview_temp_parent.basis = align_up(preview_temp_parent.global_transform.basis, result.normal)
+				var quaternion = Quaternion(preview_temp_parent.basis.orthonormalized())
+				if btn_surface_normal_x.button_pressed:
+					quaternion = quaternion * Quaternion(Vector3(1, 0, 0), deg_to_rad(90))
+				elif btn_surface_normal_z.button_pressed:
+					quaternion = quaternion * Quaternion(Vector3(0, 0, 1), deg_to_rad(90))
 
 func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> EditorPlugin.AfterGUIInput:
 	if event is InputEventMouseMotion:
@@ -637,32 +632,25 @@ func instantiate_selected_item_at_position() -> void:
 
 	populate_preview_instance_rid_array(preview_instance)
 	var result = perform_raycast_with_exclusion(preview_instance_rid_array)
-	# todo remove the raycast cos we do it each frame anyway
-	if result and result.collider:
-		var instance = make_item_instance(items[selected_item_id])
-		var parent = selected_parent()
-		if not parent:
-			printerr("Valid parent not selected.")
-			return
-		parent.add_child(instance)
-		instance.owner = EditorInterface.get_edited_scene_root()
-		initialize_node_name(instance, items[selected_item_id].item_name)
+	var instance = make_item_instance(items[selected_item_id])
+	var parent = selected_parent()
+	if not parent:
+		printerr("Valid parent not selected.")
+		return
+	parent.add_child(instance)
+	instance.owner = EditorInterface.get_edited_scene_root()
+	initialize_node_name(instance, items[selected_item_id].item_name)
 
-		var new_position: Vector3 = result.position
-		new_position = snap(new_position)
-		
-		if items[selected_item_id].use_random_vertical_offset:
-			new_position.y += random_offset_y
-
-		instance.transform = preview_temp_parent.transform*preview_instance.transform
-		#print("[SceneBuilderDock] pos_offset_y: ", pos_offset_y)
-		#instance.basis = preview_instance.basis
-		#instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
-		#instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
-		undo_redo.create_action("Instantiate selected item")
-		undo_redo.add_undo_method(parent, "remove_child", instance)
+	instance.transform = preview_temp_parent.transform*preview_instance.transform
+	#print("[SceneBuilderDock] pos_offset_y: ", pos_offset_y)
+	#instance.basis = preview_instance.basis
+	#instance.basis = Basis.from_euler(snap_rot(preview_instance.basis.get_euler()))
+	#instance.basis = instance.basis.scaled(preview_instance.basis.get_scale())
+	undo_redo.create_action("Instantiate selected item")
+	undo_redo.add_undo_method(parent, "remove_child", instance)
+	if btn_replace_overlapping.button_pressed  and "collider" in result:
 		var hit_ancestor = _get_root_ancestor(result.collider, parent)
-		if btn_replace_overlapping.button_pressed and hit_ancestor:
+		if hit_ancestor:
 			var old_aabb = _get_merged_aabb(result.collider, 5)
 			var new_aabb = _get_merged_aabb(instance, 5)
 			var cross = old_aabb.intersection(new_aabb)
@@ -670,11 +658,9 @@ func instantiate_selected_item_at_position() -> void:
 				and (old_aabb.size-new_aabb.size).length_squared() < 1:
 				parent.remove_child(hit_ancestor)
 				undo_redo.add_undo_method(parent, "add_child", hit_ancestor)
-		undo_redo.add_do_reference(instance)
-		undo_redo.commit_action()
-		reroll_preview_instance_transform()
-	else:
-		print("[SceneBuilderDock] Raycast missed, items must be instantiated on a StaticBody with a CollisionShape")
+	undo_redo.add_do_reference(instance)
+	undo_redo.commit_action()
+	reroll_preview_instance_transform()
 
 func initialize_node_name(node: Node3D, new_name: String) -> void:
 	var all_names = toolbox.get_all_node_names(selected_parent())
@@ -688,7 +674,26 @@ func perform_raycast_with_exclusion(exclude_rids: Array = []) -> Dictionary:
 	query.from = origin
 	query.to = end
 	query.exclude = exclude_rids
-	return physics_space.intersect_ray(query)
+	var mode = %PlaneMode.selected
+	var res = physics_space.intersect_ray(query)
+	if not %EnablePlane.button_pressed:
+		return res
+	var pres = {}
+	var plane = Plane(Vector3.UP, %PlaneYPos.value)
+	pres.position = plane.intersects_ray(origin, (end-origin).normalized())
+	match mode:
+		0: # prefer colliders
+			if res and res.position:
+				return res
+			return pres
+		1: # closest wins
+			if res and res.position and \
+			(res.position-origin).length_squared() < (pres.position-origin).length_squared():
+				return res
+			return pres
+		2: #ignore colliders
+			return pres
+	return pres
 
 ## This function prevents us from trying to raycast against our preview item.
 func populate_preview_instance_rid_array(instance: Node) -> void:
