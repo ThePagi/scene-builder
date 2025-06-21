@@ -9,21 +9,21 @@ var editor: EditorInterface
 var popup_instance: PopupPanel
 
 # Nodes
-var create_items: VBoxContainer
+var create_items: Control
 var collection_line_edit: LineEdit
 var snapx: SpinBox
 var snapy: SpinBox
 var snapz: SpinBox
-var auto_snapx: CheckButton
-var auto_snapy: CheckButton
-var auto_snapz: CheckButton
+var auto_snapx: Button
+var auto_snapy: Button
+var auto_snapz: Button
 var snap_angle: SpinBox
 var snapx_offset: SpinBox
 var snapy_offset: SpinBox
 var snapz_offset: SpinBox
-var autox_offset: CheckButton
-var autoy_offset: CheckButton
-var autoz_offset: CheckButton
+var autox_offset: Button
+var autoy_offset: Button
+var autoz_offset: Button
 var randomize_vertical_offset_checkbox: CheckButton
 var randomize_rotation_checkbox: CheckButton
 var randomize_scale_checkbox: CheckButton
@@ -62,31 +62,31 @@ func execute(root_dir: String):
 	create_items = create_items_scene.instantiate()
 	popup_instance.add_child(create_items)
 
-	collection_line_edit = create_items.get_node("Collection/LineEdit")
-	snapx = create_items.get_node("SnapToGrid/x")
-	snapy = create_items.get_node("SnapToGrid/y")
-	snapz = create_items.get_node("SnapToGrid/z")
-	auto_snapx = create_items.get_node("SnapToGrid/autox")
-	auto_snapy = create_items.get_node("SnapToGrid/autoy")
-	auto_snapz = create_items.get_node("SnapToGrid/autoz")
-	snapx_offset = create_items.get_node("SnapOffset/x")
-	snapy_offset = create_items.get_node("SnapOffset/y")
-	snapz_offset = create_items.get_node("SnapOffset/z")
-	autox_offset = create_items.get_node("SnapOffset/autox")
-	autoy_offset = create_items.get_node("SnapOffset/autoy")
-	autoz_offset = create_items.get_node("SnapOffset/autoz")
-	snap_angle = create_items.get_node("SnapToGrid/angle")
-	randomize_vertical_offset_checkbox = create_items.get_node("Boolean/VerticalOffset")
-	randomize_rotation_checkbox = create_items.get_node("Boolean/Rotation")
-	randomize_scale_checkbox = create_items.get_node("Boolean/Scale")
-	vertical_offset_spin_box_min = create_items.get_node("VerticalOffset/min")
-	vertical_offset_spin_box_max = create_items.get_node("VerticalOffset/max")
-	rotx_slider = create_items.get_node("Rotation/x")
-	roty_slider = create_items.get_node("Rotation/y")
-	rotz_slider = create_items.get_node("Rotation/z")
-	scale_spin_box_min = create_items.get_node("Scale/min")
-	scale_spin_box_max = create_items.get_node("Scale/max")
-	ok_button = create_items.get_node("Okay")
+	collection_line_edit = create_items.get_node("VBox/Collection/LineEdit")
+	snapx = create_items.get_node("VBox/SnapToGrid/x")
+	snapy = create_items.get_node("VBox/SnapToGrid/y")
+	snapz = create_items.get_node("VBox/SnapToGrid/z")
+	auto_snapx = create_items.get_node("VBox/SnapToGrid/autox")
+	auto_snapy = create_items.get_node("VBox/SnapToGrid/autoy")
+	auto_snapz = create_items.get_node("VBox/SnapToGrid/autoz")
+	snapx_offset = create_items.get_node("VBox/SnapOffset/x")
+	snapy_offset = create_items.get_node("VBox/SnapOffset/y")
+	snapz_offset = create_items.get_node("VBox/SnapOffset/z")
+	autox_offset = create_items.get_node("VBox/SnapOffset/autox")
+	autoy_offset = create_items.get_node("VBox/SnapOffset/autoy")
+	autoz_offset = create_items.get_node("VBox/SnapOffset/autoz")
+	snap_angle = create_items.get_node("VBox/SnapToGrid/angle")
+	randomize_vertical_offset_checkbox = create_items.get_node("VBox/Boolean/VerticalOffset")
+	randomize_rotation_checkbox = create_items.get_node("VBox/Boolean/Rotation")
+	randomize_scale_checkbox = create_items.get_node("VBox/Boolean/Scale")
+	vertical_offset_spin_box_min = create_items.get_node("VBox/VerticalOffset/min")
+	vertical_offset_spin_box_max = create_items.get_node("VBox/VerticalOffset/max")
+	rotx_slider = create_items.get_node("VBox/Rotation/x")
+	roty_slider = create_items.get_node("VBox/Rotation/y")
+	rotz_slider = create_items.get_node("VBox/Rotation/z")
+	scale_spin_box_min = create_items.get_node("VBox/Scale/min")
+	scale_spin_box_max = create_items.get_node("VBox/Scale/max")
+	ok_button = create_items.get_node("VBox/Okay")
 
 	ok_button.pressed.connect(_on_ok_pressed)
 
@@ -111,8 +111,10 @@ func _on_ok_pressed():
 
 	for path in selected_paths:
 		await _create_resource(path)
-	
-	
+	var tabbar = EditorInterface.get_editor_main_screen().get_parent().get_parent().find_child("*TabBar*", true, false)
+	for i in tabbar.tab_count:
+		if tabbar.get_tab_title(i) == "icon_studio":
+			tabbar.emit_signal("tab_close_pressed", i)
 	popup_instance.queue_free()
 	done.emit()
 

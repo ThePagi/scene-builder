@@ -1,245 +1,252 @@
-[gd_scene format=3 uid="uid://x8g21udghd81"]
+[gd_scene load_steps=3 format=3 uid="uid://x8g21udghd81"]
 
-[node name="SceneBuilderCreateItems" type="VBoxContainer"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -768.0
-offset_bottom = -439.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_af5qv"]
+bg_color = Color(0.5, 0.5, 0.5, 0.078431375)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="GDScript" id="GDScript_af5qv"]
+script/source = "@tool
+extends SpinBox
+
+func disable(v: bool):
+	self.editable = not v
+"
+
+[node name="SceneBuilderCreateItems" type="PanelContainer"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -279.0
+offset_top = -183.0
+offset_right = 279.0
+offset_bottom = 183.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_af5qv")
 
-[node name="Collection" type="HBoxContainer" parent="."]
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Collection" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Collection"]
+[node name="Label" type="Label" parent="VBox/Collection"]
 layout_mode = 2
 text = "Collection:"
 
-[node name="LineEdit" type="LineEdit" parent="Collection"]
+[node name="LineEdit" type="LineEdit" parent="VBox/Collection"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Unnamed"
 alignment = 1
 
-[node name="SnapToGrid" type="GridContainer" parent="."]
+[node name="SnapToGrid" type="GridContainer" parent="VBox"]
 layout_mode = 2
 columns = 9
 
-[node name="Label" type="Label" parent="SnapToGrid"]
+[node name="Label" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Snap to grid"
 
-[node name="Label2" type="Label" parent="SnapToGrid"]
+[node name="Label2" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "x"
 
-[node name="x" type="SpinBox" parent="SnapToGrid"]
+[node name="x" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 allow_greater = true
 
-[node name="Label3" type="Label" parent="SnapToGrid"]
+[node name="Label3" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "y"
 
-[node name="y" type="SpinBox" parent="SnapToGrid"]
+[node name="y" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 allow_greater = true
 
-[node name="Label4" type="Label" parent="SnapToGrid"]
+[node name="Label4" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "z"
 
-[node name="z" type="SpinBox" parent="SnapToGrid"]
+[node name="z" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 allow_greater = true
 
-[node name="Label5" type="Label" parent="SnapToGrid"]
+[node name="Label5" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "rotation"
 
-[node name="angle" type="SpinBox" parent="SnapToGrid"]
+[node name="angle" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
 max_value = 360.0
 rounded = true
 
-[node name="Label6" type="Label" parent="SnapToGrid"]
+[node name="Label6" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 text = "Auto snap"
 
-[node name="Label7" type="Label" parent="SnapToGrid"]
+[node name="Label7" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 text = "x"
 
-[node name="autox" type="CheckButton" parent="SnapToGrid"]
+[node name="autox" type="CheckButton" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 6
 
-[node name="Label8" type="Label" parent="SnapToGrid"]
+[node name="Label8" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 text = "y"
 
-[node name="autoy" type="CheckButton" parent="SnapToGrid"]
+[node name="autoy" type="CheckButton" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 6
 
-[node name="Label9" type="Label" parent="SnapToGrid"]
+[node name="Label9" type="Label" parent="VBox/SnapToGrid"]
 layout_mode = 2
 text = "z"
 
-[node name="autoz" type="CheckButton" parent="SnapToGrid"]
+[node name="autoz" type="CheckButton" parent="VBox/SnapToGrid"]
 layout_mode = 2
 size_flags_horizontal = 6
 
-[node name="SnapOffset" type="GridContainer" parent="."]
+[node name="SnapOffset" type="GridContainer" parent="VBox"]
 layout_mode = 2
-columns = 7
+columns = 4
 
-[node name="Label" type="Label" parent="SnapOffset"]
+[node name="Label6" type="Label" parent="VBox/SnapOffset"]
+layout_mode = 2
+text = "Auto offset"
+
+[node name="autox" type="CheckBox" parent="VBox/SnapOffset"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "auto x"
+
+[node name="autoy" type="CheckBox" parent="VBox/SnapOffset"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "auto y"
+
+[node name="autoz" type="CheckBox" parent="VBox/SnapOffset"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "auto z"
+
+[node name="Label" type="Label" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 0
 text = "Snap offset"
 
-[node name="Label2" type="Label" parent="SnapOffset"]
-layout_mode = 2
-size_flags_horizontal = 0
-text = "x"
-
-[node name="x" type="SpinBox" parent="SnapOffset"]
+[node name="x" type="SpinBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
 allow_greater = true
+script = SubResource("GDScript_af5qv")
 
-[node name="Label3" type="Label" parent="SnapOffset"]
-layout_mode = 2
-size_flags_horizontal = 0
-text = "y"
-
-[node name="y" type="SpinBox" parent="SnapOffset"]
+[node name="y" type="SpinBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
 allow_greater = true
+script = SubResource("GDScript_af5qv")
 
-[node name="Label4" type="Label" parent="SnapOffset"]
-layout_mode = 2
-size_flags_horizontal = 0
-text = "z"
-
-[node name="z" type="SpinBox" parent="SnapOffset"]
+[node name="z" type="SpinBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
 allow_greater = true
+script = SubResource("GDScript_af5qv")
 
-[node name="Label6" type="Label" parent="SnapOffset"]
-layout_mode = 2
-text = "Auto offset"
-
-[node name="Label7" type="Label" parent="SnapOffset"]
-layout_mode = 2
-text = "x"
-
-[node name="autox" type="CheckButton" parent="SnapOffset"]
-layout_mode = 2
-size_flags_horizontal = 6
-
-[node name="Label8" type="Label" parent="SnapOffset"]
-layout_mode = 2
-text = "y"
-
-[node name="autoy" type="CheckButton" parent="SnapOffset"]
-layout_mode = 2
-size_flags_horizontal = 6
-
-[node name="Label9" type="Label" parent="SnapOffset"]
-layout_mode = 2
-text = "z"
-
-[node name="autoz" type="CheckButton" parent="SnapOffset"]
-layout_mode = 2
-size_flags_horizontal = 6
-
-[node name="Boolean" type="HBoxContainer" parent="."]
+[node name="HSeparator" type="HSeparator" parent="VBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Boolean"]
+[node name="Boolean" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBox/Boolean"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Randomize"
 
-[node name="Rotation" type="CheckButton" parent="Boolean"]
+[node name="Rotation" type="CheckButton" parent="VBox/Boolean"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Rotation"
 
-[node name="Scale" type="CheckButton" parent="Boolean"]
+[node name="Scale" type="CheckButton" parent="VBox/Boolean"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Scale"
 
-[node name="VerticalOffset" type="CheckButton" parent="Boolean"]
+[node name="VerticalOffset" type="CheckButton" parent="VBox/Boolean"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Vertical Offset"
 
-[node name="Headers" type="HBoxContainer" parent="."]
+[node name="Headers" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Headers"]
+[node name="Label" type="Label" parent="VBox/Headers"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="x" type="Label" parent="Headers"]
+[node name="x" type="Label" parent="VBox/Headers"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "x"
 
-[node name="y" type="Label" parent="Headers"]
+[node name="y" type="Label" parent="VBox/Headers"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "y"
 
-[node name="z" type="Label" parent="Headers"]
+[node name="z" type="Label" parent="VBox/Headers"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "z"
 
-[node name="Rotation" type="HBoxContainer" parent="."]
+[node name="Rotation" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Rotation"]
+[node name="Label" type="Label" parent="VBox/Rotation"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Rotation"
 
-[node name="x" type="HSlider" parent="Rotation"]
+[node name="x" type="HSlider" parent="VBox/Rotation"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 360.0
 
-[node name="y" type="HSlider" parent="Rotation"]
+[node name="y" type="HSlider" parent="VBox/Rotation"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 360.0
 
-[node name="z" type="HSlider" parent="Rotation"]
+[node name="z" type="HSlider" parent="VBox/Rotation"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 360.0
 
-[node name="Scale" type="HBoxContainer" parent="."]
+[node name="Scale" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="lbl_Scale" type="Label" parent="Scale"]
+[node name="lbl_Scale" type="Label" parent="VBox/Scale"]
 layout_mode = 2
 size_flags_horizontal = 0
 text = "Scale"
 
-[node name="min" type="SpinBox" parent="Scale"]
+[node name="min" type="SpinBox" parent="VBox/Scale"]
 layout_mode = 2
 size_flags_horizontal = 6
 min_value = 0.01
@@ -247,12 +254,12 @@ step = 0.01
 value = 0.9
 custom_arrow_step = 0.02
 
-[node name="lbl_to" type="Label" parent="Scale"]
+[node name="lbl_to" type="Label" parent="VBox/Scale"]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "to"
 
-[node name="max" type="SpinBox" parent="Scale"]
+[node name="max" type="SpinBox" parent="VBox/Scale"]
 layout_mode = 2
 size_flags_horizontal = 6
 min_value = 0.01
@@ -260,27 +267,27 @@ step = 0.01
 value = 1.1
 custom_arrow_step = 0.02
 
-[node name="VerticalOffset" type="HBoxContainer" parent="."]
+[node name="VerticalOffset" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="lbl_offset" type="Label" parent="VerticalOffset"]
+[node name="lbl_offset" type="Label" parent="VBox/VerticalOffset"]
 layout_mode = 2
 size_flags_horizontal = 0
 text = "Vertical offset"
 
-[node name="min" type="SpinBox" parent="VerticalOffset"]
+[node name="min" type="SpinBox" parent="VBox/VerticalOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
 step = 0.001
 value = 0.02
 custom_arrow_step = 0.001
 
-[node name="lbl_to" type="Label" parent="VerticalOffset"]
+[node name="lbl_to" type="Label" parent="VBox/VerticalOffset"]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "to"
 
-[node name="max" type="SpinBox" parent="VerticalOffset"]
+[node name="max" type="SpinBox" parent="VBox/VerticalOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
 min_value = 0.001
@@ -288,8 +295,12 @@ step = 0.001
 value = 0.05
 custom_arrow_step = 0.001
 
-[node name="Okay" type="Button" parent="."]
+[node name="Okay" type="Button" parent="VBox"]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 text = "Create scene builder items with icons"
+
+[connection signal="toggled" from="VBox/SnapOffset/autox" to="VBox/SnapOffset/x" method="disable"]
+[connection signal="toggled" from="VBox/SnapOffset/autoy" to="VBox/SnapOffset/y" method="disable"]
+[connection signal="toggled" from="VBox/SnapOffset/autoz" to="VBox/SnapOffset/z" method="disable"]

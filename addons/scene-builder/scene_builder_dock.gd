@@ -681,6 +681,8 @@ func perform_raycast_with_exclusion(exclude_rids: Array = []) -> Dictionary:
 	var pres = {}
 	var plane = Plane(Vector3.UP, %PlaneYPos.value)
 	pres.position = plane.intersects_ray(origin, (end-origin).normalized())
+	if pres.position == null:
+		return res
 	match mode:
 		0: # prefer colliders
 			if res and res.position:
