@@ -89,10 +89,11 @@ func is_transform_mode_enabled() -> bool:
 	return current_transform_mode != TransformMode.NONE
 
 # Preview item
-var original_preview_position: Vector3 = Vector3.ZERO
 var original_preview_basis: Basis = Basis.IDENTITY
 var original_mouse_position: Vector2 = Vector2.ONE
 var original_preview_scale: Vector3 = Vector3.ONE
+var original_position_offset: Vector3
+var position_offset: Vector3
 var random_offset_y: float = 0
 var preview_temp_parent: Node3D # Used as a parent to the preview item
 
@@ -234,7 +235,7 @@ func _process(_delta: float) -> void:
 			if items[selected_item_id].use_random_vertical_offset:
 				new_position.y += random_offset_y
 
-			preview_temp_parent.position =  new_position
+			preview_temp_parent.position = new_position + position_offset
 			if btn_use_surface_normal.button_pressed:
 				preview_temp_parent.basis = align_up(preview_temp_parent.global_transform.basis, result.normal)
 				var quaternion = Quaternion(preview_temp_parent.basis.orthonormalized())
@@ -256,10 +257,13 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> EditorPlugin.
 			match current_transform_mode:
 				TransformMode.POSITION_X:
 					preview_temp_parent.position.x += relative_motion
+					position_offset.x += relative_motion
 				TransformMode.POSITION_Y:
 					preview_temp_parent.position.y += relative_motion
+					position_offset.y += relative_motion
 				TransformMode.POSITION_Z:
 					preview_temp_parent.position.z += relative_motion
+					position_offset.z += relative_motion
 				TransformMode.ROTATION_X:
 					if btn_use_local_space.button_pressed:
 						preview_temp_parent.rotate_object_local(Vector3(1, 0, 0), relative_motion)
@@ -291,6 +295,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> EditorPlugin.
 							if is_transform_mode_enabled():
 								# Confirm changes
 								#original_preview_basis = preview_instance.basis
+								original_position_offset = position_offset
 								original_preview_scale = preview_temp_parent.scale
 								original_preview_basis = Basis.from_euler(snap_rot(preview_temp_parent.basis.get_euler()))
 								original_preview_basis = original_preview_basis.scaled(preview_temp_parent.basis.get_scale())
@@ -305,6 +310,7 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> EditorPlugin.
 							if is_transform_mode_enabled():
 								# Revert preview transformations
 								print("[SceneBuilderDock] warping to: ", original_mouse_position)
+								position_offset = original_position_offset
 								preview_temp_parent.basis = original_preview_basis
 								preview_temp_parent.scale = original_preview_scale
 								end_transform_mode()
@@ -539,6 +545,7 @@ func create_preview_instance() -> void:
 	preview_instance.owner = EditorInterface.get_edited_scene_root()
 	preview_instance.position = items[selected_item_id].snap_offset
 	preview_instance.rotation = Vector3.ZERO
+	position_offset = Vector3.ZERO
 	original_preview_basis = Basis()
 	original_preview_scale = Vector3.ONE
 	reroll_preview_instance_transform()
@@ -863,7 +870,7 @@ func start_transform_mode(mode: TransformMode) -> void:
 	
 	match mode:
 		TransformMode.POSITION_X, TransformMode.POSITION_Y, TransformMode.POSITION_Z:
-			original_preview_position = preview_instance.position
+			original_position_offset = position_offset
 		TransformMode.ROTATION_X, TransformMode.ROTATION_Y, TransformMode.ROTATION_Z:
 			original_preview_basis = preview_instance.basis
 		TransformMode.SCALE:

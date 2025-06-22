@@ -72,10 +72,9 @@ layout_mode = 2
 [node name="Tab" type="TabContainer" parent="Settings"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
-current_tab = 1
+current_tab = 0
 
 [node name="Options" type="VBoxContainer" parent="Settings/Tab"]
-visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -171,6 +170,7 @@ tooltip_text = "Opens item creation menu for the scene files selected in the Fil
 text = "Create items"
 
 [node name="Plane" type="VBoxContainer" parent="Settings/Tab"]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
