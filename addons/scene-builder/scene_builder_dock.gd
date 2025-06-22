@@ -823,6 +823,10 @@ func select_item(item_id: int) -> void:
 		print("A Node3D parent not selected in the scene tree!")
 		return
 	base_parent.set_meta("_edit_lock_", true)
+	position_offset = Vector3.ZERO
+	original_preview_basis = Basis()
+	original_position_offset = Vector3.ZERO
+	original_preview_scale = Vector3.ONE
 	preview_temp_parent = Node3D.new()
 	preview_temp_parent.name = "_PreviewTempParent"
 	base_parent.add_child(preview_temp_parent)
