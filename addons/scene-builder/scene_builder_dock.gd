@@ -545,9 +545,6 @@ func create_preview_instance() -> void:
 	preview_instance.owner = EditorInterface.get_edited_scene_root()
 	preview_instance.position = items[selected_item_id].snap_offset
 	preview_instance.rotation = Vector3.ZERO
-	position_offset = Vector3.ZERO
-	original_preview_basis = Basis()
-	original_preview_scale = Vector3.ONE
 	reroll_preview_instance_transform()
 
 	# Instantiating a node automatically selects it, which is annoying.
@@ -800,8 +797,6 @@ func reroll_preview_instance_transform() -> void:
 		printerr("[SceneBuilderDock] preview_instance is null inside reroll_preview_instance_transform()")
 		return
 		
-	preview_temp_parent.transform = Transform3D.IDENTITY
-
 	random_offset_y = rng.randf_range(items[selected_item_id].random_offset_y_min, items[selected_item_id].random_offset_y_max)
 
 	if items[selected_item_id].use_random_scale:

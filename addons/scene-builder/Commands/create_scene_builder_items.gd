@@ -131,7 +131,7 @@ func _create_resource(path: String):
 		print("[Create Scene Builder Items] Path to scene builder item not found")
 		return
 
-	var resource: SceneBuilderItem = load(scene_builder_item_path).new()
+	
 
 	if ResourceLoader.exists(path):
 		var packed_scene = load(path)
@@ -142,14 +142,19 @@ func _create_resource(path: String):
 		if instance is not Node3D:
 			printerr("'", path.get_file(), "' A scene must inherit from Node3D to make a scene-builder item!")
 			return
+		var col_name = "Unnamed"
+		if not collection_line_edit.text.is_empty():
+			col_name = collection_line_edit.text
+		var save_path: String = path_root + col_name + "/%s.res" % path.get_file().get_basename()
+		var resource: SceneBuilderItem
+		if ResourceLoader.exists(save_path):
+			resource = load(save_path)
+		else:
+			resource = load(scene_builder_item_path).new()
 		# Populate resource
 		resource.prefab = packed_scene
 		resource.item_name = path.get_file().get_basename()
-		if collection_line_edit.text.is_empty():
-			print("[Create Scene Builder Items] Collection name was not given, using: Unnamed")
-			resource.collection_name = "Unnamed"
-		else:
-			resource.collection_name = collection_line_edit.text
+		resource.collection_name = col_name
 		resource.snap_to_grid = Vector3(snapx.value, snapy.value, snapz.value)
 		resource.snap_offset = Vector3(snapx_offset.value, snapy_offset.value, snapz_offset.value)
 		resource.snap_rotation = snap_angle.value
@@ -228,7 +233,6 @@ func _create_resource(path: String):
 			resource.snap_offset.y = -aabb.get_center().y
 		if autoz_offset.button_pressed:
 			resource.snap_offset.z = -aabb.get_center().z
-		var save_path: String = path_root + resource.collection_name + "/%s.res" % resource.item_name
 		ResourceSaver.save(resource, save_path)
 		var fs = EditorInterface.get_resource_filesystem()
 		fs.update_file(save_path)
