@@ -575,22 +575,19 @@ func load_items_from_collection_folder_on_disk(tab_name: String):
 	highlighters.clear()
 	var dir = DirAccess.open(current_collection.resource_path.get_basename() + "/" + tab_name)
 	if dir:
-		var paths:Array[String] = []
-		dir.list_dir_begin()
-		var item_filename = dir.get_next()
-		while item_filename != "":
-			var item_path = current_collection.resource_path.get_basename() + "/" + tab_name + "/" + item_filename
-			paths.push_back(item_path)
-			ResourceLoader.load_threaded_request(item_path, "Resource", false, 1)
-			item_filename = dir.get_next()
-		dir.list_dir_end()
-		for path in paths:
-			var resource = ResourceLoader.load_threaded_get(path)
+		var paths = dir.get_files()
+		paths.sort()
+		for fn in paths:
+			var full_path = current_collection.resource_path.get_basename() + "/" + tab_name + "/" + fn
+			ResourceLoader.load_threaded_request(full_path, "Resource", false, 1)
+		for fn in paths:
+			var full_path = current_collection.resource_path.get_basename() + "/" + tab_name + "/" + fn
+			var resource = ResourceLoader.load_threaded_get(full_path)
 			if resource and resource is SceneBuilderItem:
 				#print("[SceneBuilderDock] Loaded item: ", item_filename)
 				items.push_back(resource)
 			else:
-				print("[SceneBuilderDock] The resource is not a SceneBuilderItem or failed to load, item_path: ", path)
+				print("[SceneBuilderDock] The resource is not a SceneBuilderItem or failed to load, item_path: ", full_path)
 
 func get_all_node_names(_node) -> Array[String]:
 	var _all_node_names = []
