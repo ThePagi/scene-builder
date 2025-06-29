@@ -8,7 +8,7 @@ var plugin: EditorPlugin
 
 # Paths
 var data_dir: String = ""
-var path_to_collection_names: String
+var path_to_tab_names: String
 var editor: EditorInterface
 var undo_redo: EditorUndoRedoManager
 
@@ -58,12 +58,12 @@ var viewport: Viewport
 var camera: Camera3D
 
 # Updated when reloading all collections
-var collections: CollectionNames
-var collection_names: Array[String] = []
+var current_collection: SceneBuilderCollection = null
+var tab_names: Array[String] = []
 var collection_colors: Array[Color] = []
 
 # Also updated on tab button click
-var selected_collection_id: int = 0
+var selected_tab_id: int = 0
 var items: Array[SceneBuilderItem] = []
 var highlighters: Array[NinePatchRect] = []
 # Also updated on item click
@@ -74,7 +74,7 @@ var preview_instance_rid_array: Array[RID] = []
 enum TransformMode {
 	NONE,
 	POSITION_X,
-	POSITION_Y, 
+	POSITION_Y,
 	POSITION_Z,
 	ROTATION_X,
 	ROTATION_Y,
@@ -105,9 +105,10 @@ func snap_rot(euler: Vector3) -> Vector3:
 	return euler.snapped(Vector3.ONE*deg_to_rad(items[selected_item_id].snap_rotation))
 func selected_parent()->Node3D:
 	var sel = EditorInterface.get_selection().get_selected_nodes()
-	#if len(sel) == 0:
-	#	EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
-	#	sel = EditorInterface.get_selection().get_selected_nodes()
+	if placement_mode_enabled and %ForceRootNode.button_pressed:
+		EditorInterface.get_selection().clear()
+		EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
+		sel = EditorInterface.get_selection().get_selected_nodes()
 	if len(sel) == 1:
 		if sel[0] is not Node3D:
 			if btn_parent_node_selector:
@@ -117,12 +118,12 @@ func selected_parent()->Node3D:
 		world3d = viewport.find_world_3d()
 		physics_space = world3d.direct_space_state
 		camera = viewport.get_camera_3d()
-		
+
 		var node = sel[0]
 		var node_name := node.get_class().split(".")[-1]
 		var base = plugin.get_editor_interface().get_base_control()
 		var node_icon := base.get_theme_icon(node_name, "EditorIcons")
-		
+
 		if node_icon == base.get_theme_icon("invalid icon", "EditorIcons"):
 			node_icon = base.get_theme_icon("Node", "EditorIcons")
 		if btn_parent_node_selector:
@@ -139,41 +140,38 @@ func init(p: EditorPlugin, cmd: SceneBuilderCommands, cfg: SceneBuilderConfig):
 	editor = plugin.get_editor_interface()
 	commands = cmd
 	config = cfg
-	
+
 # ---- Notifications -----------------------------------------------------------
 
 func _enter_tree() -> void:
-	path_to_collection_names = config.root_dir + "collection_names.tres"
-	
-	
-	base_control = EditorInterface.get_base_control()
 
+	base_control = EditorInterface.get_base_control()
 	# Found using: https://github.com/Zylann/godot_editor_debugger_plugin
 	var _panel : Panel = editor.get_base_control()
 	var _vboxcontainer15 : VBoxContainer = _panel.get_child(0)
 	var _vboxcontainer26 : VBoxContainer = _vboxcontainer15.get_child(1).get_child(1).get_child(1).get_child(0)
 	var _main_screen : VBoxContainer = _vboxcontainer26.get_child(0).get_child(0).get_child(0).get_child(1).get_child(0)
 	var _hboxcontainer11486 : HBoxContainer = _main_screen.get_child(1).get_child(0).get_child(0).get_child(0)
-	
+
 	btn_use_local_space = _hboxcontainer11486.get_child(13)
 	if !btn_use_local_space:
 		printerr("[SceneBuilderDock] Unable to find use local space button")
 
 	#region Initialize controls for the SceneBuilderDock
-	
+
 	var path : String = SceneBuilderToolbox.find_resource_with_dynamic_path("scene_builder_dock.tscn")
 	if path == "":
 		printerr("[SceneBuilderDock] scene_builder_dock.tscn was not found")
-		return	
+		return
 
 	# Options tab
 	btn_use_surface_normal = %UseSurfaceNormal
 	btn_surface_normal_x = %Orientation/X
 	btn_surface_normal_y = %Orientation/Y
 	btn_surface_normal_z = %Orientation/Z
-	
+
 	btn_parent_node_selector = %ParentNodeSelector
-	
+
 	#
 	btn_group_surface_orientation = ButtonGroup.new()
 	btn_surface_normal_x.button_group = btn_group_surface_orientation
@@ -181,7 +179,7 @@ func _enter_tree() -> void:
 	btn_surface_normal_z.button_group = btn_group_surface_orientation
 	#
 	btn_reload_all_items = ($"Settings/Tab/Options/Bottom/ReloadAllItems")
-	btn_reload_all_items.pressed.connect(reload_all_items)
+	btn_reload_all_items.pressed.connect(load_or_make_collections)
 	menu_command_popup = ($"Settings/Tab/Options/Bottom/CommandsPopup")
 	commands.fill_popup(menu_command_popup.get_popup())
 	btn_cmd_create_items = ($"Settings/Tab/Options/QuickCommands/CreateItems")
@@ -204,11 +202,13 @@ func _enter_tree() -> void:
 	lbl_indicator_z = ($"Settings/Indicators/3")
 	lbl_indicator_scale = ($"Settings/Indicators/4")
 
+	$CollectionNode/CollectionPicker.resource_changed.connect(load_or_make_collections)
+
 	#endregion
 
 	# Collection tabs
 	load_or_make_collections()
-	select_collection(0)
+	select_tab(0)
 
 
 func resize_icons(value: float):
@@ -428,15 +428,15 @@ func forward_3d_gui_input(_camera: Camera3D, event: InputEvent) -> EditorPlugin.
 # ---- Buttons -----------------------------------------------------------------
 
 
-func select_collection(tab_index: int) -> void:
+func select_tab(tab_index: int) -> void:
 	end_placement_mode()
 	for c in ($"Collection/Panel/Cats").get_children():
 		(c as Button).modulate = Color.WHITE
-	if tab_index < 0 or tab_index >= len(collection_names):
+	if tab_index < 0 or tab_index >= len(tab_names):
 		print("Selected collection out of bounds")
 		return
 	($"Collection/Panel/Cats").get_child(tab_index).modulate = Color.AQUAMARINE
-	selected_collection_id = tab_index
+	selected_tab_id = tab_index
 	reload_all_items()
 
 func on_item_icon_clicked(item_id: int) -> void:
@@ -455,15 +455,14 @@ func on_item_icon_clicked(item_id: int) -> void:
 		end_placement_mode()
 
 func reload_all_items() -> void:
-	load_or_make_collections()
 	var grid = ($"Collection/Scroll/Grid")
 	for c in grid.get_children():
 		c.queue_free()
-	if selected_collection_id >= len(collection_names):
-		print("Collection doesn't exist!")
+	if selected_tab_id >= len(tab_names):
+		print("Tab doesn't exist!")
 		return
-	if DirAccess.dir_exists_absolute(config.root_dir + "/%s" % collection_names[selected_collection_id]):
-		load_items_from_collection_folder_on_disk(collection_names[selected_collection_id])
+	if DirAccess.dir_exists_absolute(current_collection.resource_path.get_basename() + "/" + tab_names[selected_tab_id]):
+		load_items_from_collection_folder_on_disk(tab_names[selected_tab_id])
 		for i in len(items):
 			var item = items[i]
 			var texture_button: TextureButton = TextureButton.new()
@@ -571,20 +570,19 @@ func end_transform_mode() -> void:
 	current_transform_mode = TransformMode.NONE
 	reset_indicators()
 
-func load_items_from_collection_folder_on_disk(_collection_name: String):
-	
+func load_items_from_collection_folder_on_disk(tab_name: String):
 	items.clear()
 	highlighters.clear()
-	var dir = DirAccess.open(config.root_dir + _collection_name)
+	var dir = DirAccess.open(current_collection.resource_path.get_basename() + "/" + tab_name)
 	if dir:
 		var paths:Array[String] = []
 		dir.list_dir_begin()
 		var item_filename = dir.get_next()
 		while item_filename != "":
-			var item_path = config.root_dir + _collection_name + "/" + item_filename
+			var item_path = current_collection.resource_path.get_basename() + "/" + tab_name + "/" + item_filename
 			paths.push_back(item_path)
 			ResourceLoader.load_threaded_request(item_path, "Resource", false, 1)
-			item_filename = dir.get_next()	
+			item_filename = dir.get_next()
 		dir.list_dir_end()
 		for path in paths:
 			var resource = ResourceLoader.load_threaded_get(path)
@@ -606,10 +604,10 @@ func get_all_node_names(_node) -> Array[String]:
 
 func _get_merged_aabb(node: Node, node_depth: int) -> AABB:
 	var aabb := AABB()
-	
+
 	if node is GeometryInstance3D:
 		aabb = node.global_transform * node.get_aabb()
-	
+
 	if node_depth > 0:
 		for child in node.get_children():
 			var child_aabb = _get_merged_aabb(child, node_depth - 1)
@@ -617,7 +615,7 @@ func _get_merged_aabb(node: Node, node_depth: int) -> AABB:
 				aabb = child_aabb
 			elif child_aabb != AABB(): # this was fucking with the volume for some reason
 				aabb = aabb.merge(child_aabb)
-	
+
 	return aabb
 
 func _get_root_ancestor(child: Node, anc: Node) -> Node:
@@ -698,6 +696,8 @@ func perform_raycast_with_exclusion(exclude_rids: Array = []) -> Dictionary:
 				return res
 			return pres
 		2: #ignore colliders
+			if res and "collider" in res:
+				pres["collider"] = res["collider"]
 			return pres
 	return pres
 
@@ -709,44 +709,45 @@ func populate_preview_instance_rid_array(instance: Node) -> void:
 	for child in instance.get_children():
 		populate_preview_instance_rid_array(child)
 
-func load_or_make_collections() -> void:
-	print("[SceneBuilderDock] Refreshing collection names")
-
-	if !DirAccess.dir_exists_absolute(config.root_dir):
-		DirAccess.make_dir_recursive_absolute(config.root_dir)
-		print("[SceneBuilderDock] Creating a new data folder: ", config.root_dir)
-	print(path_to_collection_names)
-	if !ResourceLoader.exists(path_to_collection_names):
-		print("file not found")
-		var _collection_names: CollectionNames = CollectionNames.new()
-		print("[SceneBuilderDock] path_to_collection_names: ", path_to_collection_names)
-		var save_result = ResourceSaver.save(_collection_names, path_to_collection_names)
-		if save_result != OK:
-			printerr("[SceneBuilderDock] We were unable to create a CollectionNames resource at location: ", path_to_collection_names)
-			return
-	var _cols: CollectionNames = load(path_to_collection_names)
-	_cols.check_new_collections()
-	if _cols == null:
-		printerr("Collection names can't be loaded")
+func load_or_make_collections(coll: Resource = null) -> void:
+	print(coll)
+	if not coll and not current_collection:
+		print("Collection doesn't exist, loading default.")
+		if not DirAccess.dir_exists_absolute("res://Editor/scene-builder"):
+			DirAccess.make_dir_recursive_absolute("res://Editor/scene-builder")
+		if !ResourceLoader.exists("res://Editor/scene-builder/default.tres"):
+			var _tab_names: SceneBuilderCollection = SceneBuilderCollection.new()
+			var save_result = ResourceSaver.save(_tab_names, "res://Editor/scene-builder/default.tres")
+			if save_result != OK:
+				printerr("Can't make default collection!")
+		coll = load("res://Editor/scene-builder/default.tres")
+	elif not coll and current_collection:
+		coll = current_collection
+	if coll.resource_path == "":
+		printerr("Collection needs to be saved in filesystem!")
 		return
-	collections = _cols
-	collection_names.clear()
+	$CollectionNode/CollectionPicker.edited_resource = coll
+	coll.check_new_collections()
+	current_collection = coll
+	tab_names.clear()
 	collection_colors.clear()
 	var cat_parent = ($"Collection/Panel/Cats")
 	for c in cat_parent.get_children():
 		c.queue_free()
-	var names = collections.names_and_colors.keys().duplicate()
+	var names = current_collection.names_and_colors.keys().duplicate()
+	print(names)
 	names.sort()
 	for n in names:
-		var i = len(collection_names)
-		collection_names.push_back(n)
-		collection_colors.push_back(collections.names_and_colors[n])
+		var i = len(tab_names)
+		tab_names.push_back(n)
+		collection_colors.push_back(current_collection.names_and_colors[n])
 		var butt = Button.new()
 		butt.name = n
 		butt.text = n
 		butt.add_theme_color_override("font_color", collection_colors[i])
-		butt.pressed.connect(select_collection.bind(i))
+		butt.pressed.connect(select_tab.bind(i))
 		cat_parent.add_child(butt)
+	reload_all_items()
 	#endregion
 
 # ---- Shortcut ----------------------------------------------------------------
@@ -796,7 +797,7 @@ func reroll_preview_instance_transform() -> void:
 	if preview_instance == null:
 		printerr("[SceneBuilderDock] preview_instance is null inside reroll_preview_instance_transform()")
 		return
-		
+
 	random_offset_y = rng.randf_range(items[selected_item_id].random_offset_y_min, items[selected_item_id].random_offset_y_max)
 
 	if items[selected_item_id].use_random_scale:
@@ -845,8 +846,8 @@ func select_first_item() -> void:
 	select_item(0)
 
 func select_next_collection() -> void:
-	var new_col = (selected_collection_id + 1) % len(collection_names)
-	select_collection(new_col)
+	var new_col = (selected_tab_id + 1) % len(tab_names)
+	select_tab(new_col)
 	select_first_item()
 
 func select_next_item() -> void:
@@ -859,14 +860,14 @@ func select_previous_item() -> void:
 
 func select_previous_collection() -> void:
 	end_placement_mode()
-	var id = (len(collection_names) + selected_collection_id - 1) % len(collection_names)
-	select_collection(id)
+	var id = (len(tab_names) + selected_tab_id - 1) % len(tab_names)
+	select_tab(id)
 	select_first_item()
 
 func start_transform_mode(mode: TransformMode) -> void:
 	original_mouse_position = viewport.get_mouse_position()
 	current_transform_mode = mode
-	
+
 	match mode:
 		TransformMode.POSITION_X, TransformMode.POSITION_Y, TransformMode.POSITION_Z:
 			original_position_offset = position_offset
@@ -874,7 +875,7 @@ func start_transform_mode(mode: TransformMode) -> void:
 			original_preview_basis = preview_instance.basis
 		TransformMode.SCALE:
 			original_preview_scale = preview_instance.scale
-	
+
 	reset_indicators()
 	match mode:
 		TransformMode.POSITION_X, TransformMode.ROTATION_X:

@@ -3,13 +3,13 @@ extends EditorPlugin
 ## Creates Scene Builder items from selection on Editor.
 ## A Popup is created in which user can change creation settings.
 
-var path_root = "res://Editor/scene-builder/"
-
+var dock: SceneBuilderDock
 var editor: EditorInterface
 var popup_instance: PopupPanel
 
 # Nodes
 var create_items: Control
+var coll_res_label: Label
 var collection_line_edit: LineEdit
 var snapx: SpinBox
 var snapy: SpinBox
@@ -41,9 +41,7 @@ var icon_studio: SubViewport
 
 signal done
 
-func execute(root_dir: String):
-	if !root_dir.is_empty():
-		path_root = root_dir
+func execute():
 
 	print("[Create Scene Builder Items] Requesting user input...")
 
@@ -61,8 +59,10 @@ func execute(root_dir: String):
 	var create_items_scene := load(create_items_scene_path)
 	create_items = create_items_scene.instantiate()
 	popup_instance.add_child(create_items)
-
-	collection_line_edit = create_items.get_node("VBox/Collection/LineEdit")
+	coll_res_label = create_items.get_node("VBox/HBox/CollectionResourceLabel")
+	coll_res_label.text = dock.current_collection.resource_path
+	
+	collection_line_edit = create_items.get_node("VBox/Tab/LineEdit")
 	snapx = create_items.get_node("VBox/SnapToGrid/x")
 	snapy = create_items.get_node("VBox/SnapToGrid/y")
 	snapz = create_items.get_node("VBox/SnapToGrid/z")
@@ -142,10 +142,10 @@ func _create_resource(path: String):
 		if instance is not Node3D:
 			printerr("'", path.get_file(), "' A scene must inherit from Node3D to make a scene-builder item!")
 			return
-		var col_name = "Unnamed"
+		var tab_name = "Unnamed"
 		if not collection_line_edit.text.is_empty():
-			col_name = collection_line_edit.text
-		var save_path: String = path_root + col_name + "/%s.res" % path.get_file().get_basename()
+			tab_name = collection_line_edit.text
+		var save_path: String = dock.current_collection.resource_path.get_basename() + "/" + tab_name + "/%s.res" % path.get_file().get_basename()
 		var resource: SceneBuilderItem
 		if ResourceLoader.exists(save_path):
 			resource = load(save_path)
@@ -154,7 +154,7 @@ func _create_resource(path: String):
 		# Populate resource
 		resource.prefab = packed_scene
 		resource.item_name = path.get_file().get_basename()
-		resource.collection_name = col_name
+		resource.collection_name = tab_name
 		resource.snap_to_grid = Vector3(snapx.value, snapy.value, snapz.value)
 		resource.snap_offset = Vector3(snapx_offset.value, snapy_offset.value, snapz_offset.value)
 		resource.snap_rotation = snap_angle.value
@@ -170,7 +170,7 @@ func _create_resource(path: String):
 		resource.random_scale_min = scale_spin_box_min.value
 
 		# Create directories
-		var path_to_collection_folder = path_root + resource.collection_name
+		var path_to_collection_folder = dock.current_collection.resource_path.get_basename()
 		_create_directory_if_not_exists(path_to_collection_folder)
 
 		#region Create icon

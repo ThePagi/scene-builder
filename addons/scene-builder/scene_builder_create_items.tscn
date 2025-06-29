@@ -41,20 +41,30 @@ layout_mode = 2
 theme_override_constants/separation = -7001
 theme_override_styles/separator = SubResource("StyleBoxEmpty_af5qv")
 
-[node name="Collection" type="HBoxContainer" parent="VBox"]
+[node name="HBox" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="VBox/Collection"]
+[node name="Label" type="Label" parent="VBox/HBox"]
 layout_mode = 2
-text = "Collection:"
+text = "Selected collection resource: "
 
-[node name="LineEdit" type="LineEdit" parent="VBox/Collection"]
+[node name="CollectionResourceLabel" type="Label" parent="VBox/HBox"]
+layout_mode = 2
+
+[node name="Tab" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBox/Tab"]
+layout_mode = 2
+text = "Tab:"
+
+[node name="LineEdit" type="LineEdit" parent="VBox/Tab"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Unnamed"
 alignment = 1
 
-[node name="Control" type="Control" parent="VBox/Collection"]
+[node name="Control" type="Control" parent="VBox/Tab"]
 layout_mode = 2
 
 [node name="SnapToGrid" type="GridContainer" parent="VBox"]
@@ -133,7 +143,7 @@ text = "auto X"
 [node name="autoy" type="CheckBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
-text = "auto X"
+text = "auto Y"
 
 [node name="autoz" type="CheckBox" parent="VBox/SnapOffset"]
 layout_mode = 2

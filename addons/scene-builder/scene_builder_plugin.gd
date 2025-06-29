@@ -19,7 +19,7 @@ func _enter_tree() -> void:
 	if not _load_or_create_components(base_path):
 		return
 	scene_builder_dock.init(self, scene_builder_commands, scene_builder_config)
-	scene_builder_commands.update_config(scene_builder_config)
+	scene_builder_commands.init(scene_builder_config, scene_builder_dock)
 	add_child(scene_builder_commands)
 	#add_child(scene_builder_dock)
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_RIGHT_UL, scene_builder_dock)

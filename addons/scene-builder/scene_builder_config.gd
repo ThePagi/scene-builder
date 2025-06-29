@@ -1,8 +1,6 @@
 extends Resource
 class_name SceneBuilderConfig
 
-@export var root_dir: String = "res://Editor/scene-builder/"
-
 @export_group("For use with the Alt modifier")
 
 # Instantiate

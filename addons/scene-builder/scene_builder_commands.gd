@@ -5,6 +5,7 @@ class_name SceneBuilderCommands
 var submenu_scene: PopupMenu
 var reusable_instance
 var config: SceneBuilderConfig
+var dock: SceneBuilderDock
 
 enum SceneCommands
 {
@@ -145,9 +146,10 @@ func change_places():
 
 func create_scene_builder_items():
 	var reusable_instance = preload("./Commands/create_scene_builder_items.gd").new()
+	reusable_instance.dock = dock
 	add_child(reusable_instance)
 	reusable_instance.done.connect(_on_reusable_instance_done)
-	reusable_instance.execute(config.root_dir)
+	reusable_instance.execute()
 
 func create_standard_material_3d():
 	reusable_instance = preload("./Commands/create_standard_material_3d.gd").new()
@@ -203,8 +205,9 @@ func temporary_debug():
 	var _instance = preload("./Commands/temporary_debug.gd").new()
 	_instance.execute()
 
-func update_config(new_config) -> void:
+func init(new_config: SceneBuilderConfig, dock: SceneBuilderDock) -> void:
 	config = new_config
+	self.dock = dock
 
 # ------------------------------------------------------------------------------
 
