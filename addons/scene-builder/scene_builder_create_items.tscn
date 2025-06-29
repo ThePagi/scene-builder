@@ -104,16 +104,19 @@ text = "Snap to grid"
 
 [node name="x" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
+step = 0.0
 allow_greater = true
 script = SubResource("GDScript_af5qv")
 
 [node name="y" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
+step = 0.0
 allow_greater = true
 script = SubResource("GDScript_af5qv")
 
 [node name="z" type="SpinBox" parent="VBox/SnapToGrid"]
 layout_mode = 2
+step = 0.0
 allow_greater = true
 script = SubResource("GDScript_af5qv")
 
@@ -158,19 +161,25 @@ text = "Snap offset"
 [node name="x" type="SpinBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
+step = 0.0
 allow_greater = true
+allow_lesser = true
 script = SubResource("GDScript_af5qv")
 
 [node name="y" type="SpinBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
+step = 0.0
 allow_greater = true
+allow_lesser = true
 script = SubResource("GDScript_af5qv")
 
 [node name="z" type="SpinBox" parent="VBox/SnapOffset"]
 layout_mode = 2
 size_flags_horizontal = 6
+step = 0.0
 allow_greater = true
+allow_lesser = true
 script = SubResource("GDScript_af5qv")
 
 [node name="HSeparator" type="HSeparator" parent="VBox"]

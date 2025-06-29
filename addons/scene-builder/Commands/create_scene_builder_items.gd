@@ -90,6 +90,15 @@ func execute():
 
 	ok_button.pressed.connect(_on_ok_pressed)
 
+func _create_recursive(path):
+	if ResourceLoader.exists(path):
+		await _create_resource(path)
+	elif DirAccess.dir_exists_absolute(path):
+		for f in DirAccess.get_files_at(path):
+			await _create_recursive(path + "/" + f)
+		for d in DirAccess.get_directories_at(path):
+			await _create_recursive(path + "/" + d)
+
 func _on_ok_pressed():
 	print("[Create Scene Builder Items] On okay pressed")
 
@@ -110,7 +119,7 @@ func _on_ok_pressed():
 	print("[Create Scene Builder Items] Selected paths: " + str(selected_paths.size()))
 
 	for path in selected_paths:
-		await _create_resource(path)
+		await _create_recursive(path)
 	var tabbar = EditorInterface.get_editor_main_screen().get_parent().get_parent().find_child("*TabBar*", true, false)
 	for i in tabbar.tab_count:
 		if tabbar.get_tab_title(i) == "icon_studio":
@@ -130,115 +139,117 @@ func _create_resource(path: String):
 	else:
 		print("[Create Scene Builder Items] Path to scene builder item not found")
 		return
+	if not ResourceLoader.exists(path):
+		printerr(path, " is not a resource!")
+		return
 
+	var packed_scene = load(path)
+	if packed_scene == null or packed_scene is not PackedScene or not packed_scene.can_instantiate():
+		printerr("'", path.get_file(), "' does not exist or is not a scene.")
+		return
+	var instance = packed_scene.instantiate()
+	if instance is not Node3D:
+		printerr("'", path.get_file(), "' A scene must inherit from Node3D to make a scene-builder item!")
+		return
+	var tab_name = "Unnamed"
+	if not collection_line_edit.text.is_empty():
+		tab_name = collection_line_edit.text
+	var save_path: String = dock.current_collection.resource_path.get_basename() + "/" + tab_name + "/%s.res" % path.get_file().get_basename()
+	if not DirAccess.dir_exists_absolute(save_path.get_base_dir()):
+		DirAccess.make_dir_recursive_absolute(save_path.get_base_dir())
+	var resource: SceneBuilderItem
+	if ResourceLoader.exists(save_path):
+		resource = load(save_path)
+	else:
+		resource = load(scene_builder_item_path).new()
+	# Populate resource
+	resource.prefab = packed_scene
+	resource.item_name = path.get_file().get_basename()
+	resource.collection_name = tab_name
+	resource.snap_to_grid = Vector3(snapx.value, snapy.value, snapz.value)
+	resource.snap_offset = Vector3(snapx_offset.value, snapy_offset.value, snapz_offset.value)
+	resource.snap_rotation = snap_angle.value
+	resource.use_random_vertical_offset = randomize_vertical_offset_checkbox.button_pressed
+	resource.use_random_rotation = randomize_rotation_checkbox.button_pressed
+	resource.use_random_scale = randomize_scale_checkbox.button_pressed
+	resource.random_offset_y_min = vertical_offset_spin_box_min.value
+	resource.random_offset_y_max = vertical_offset_spin_box_max.value
+	resource.random_rot_x = rotx_slider.value
+	resource.random_rot_y = roty_slider.value
+	resource.random_rot_z = rotz_slider.value
+	resource.random_scale_min = scale_spin_box_min.value
+	resource.random_scale_min = scale_spin_box_min.value
+
+	# Create directories
+	var path_to_collection_folder = dock.current_collection.resource_path.get_basename()
+	_create_directory_if_not_exists(path_to_collection_folder)
+
+	#region Create icon
+
+	# Add packed_scene to studio scene
+	var subject: Node3D = instance
+	icon_studio.add_child(subject)
+	subject.owner = icon_studio
 	
+	var camera_root: Node3D = icon_studio.get_node("CameraRoot") as Node3D
+	camera_root.basis = Basis.IDENTITY
+	var studio_camera: Camera3D = icon_studio.get_node("CameraRoot/Yaw/Pitch/Camera3D") as Camera3D
 
-	if ResourceLoader.exists(path):
-		var packed_scene = load(path)
-		if packed_scene == null or packed_scene is not PackedScene or not packed_scene.can_instantiate():
-			printerr("'", path.get_file(), "' does not exist or is not a scene.")
-			return
-		var instance = packed_scene.instantiate()
-		if instance is not Node3D:
-			printerr("'", path.get_file(), "' A scene must inherit from Node3D to make a scene-builder item!")
-			return
-		var tab_name = "Unnamed"
-		if not collection_line_edit.text.is_empty():
-			tab_name = collection_line_edit.text
-		var save_path: String = dock.current_collection.resource_path.get_basename() + "/" + tab_name + "/%s.res" % path.get_file().get_basename()
-		var resource: SceneBuilderItem
-		if ResourceLoader.exists(save_path):
-			resource = load(save_path)
-		else:
-			resource = load(scene_builder_item_path).new()
-		# Populate resource
-		resource.prefab = packed_scene
-		resource.item_name = path.get_file().get_basename()
-		resource.collection_name = tab_name
-		resource.snap_to_grid = Vector3(snapx.value, snapy.value, snapz.value)
-		resource.snap_offset = Vector3(snapx_offset.value, snapy_offset.value, snapz_offset.value)
-		resource.snap_rotation = snap_angle.value
-		resource.use_random_vertical_offset = randomize_vertical_offset_checkbox.button_pressed
-		resource.use_random_rotation = randomize_rotation_checkbox.button_pressed
-		resource.use_random_scale = randomize_scale_checkbox.button_pressed
-		resource.random_offset_y_min = vertical_offset_spin_box_min.value
-		resource.random_offset_y_max = vertical_offset_spin_box_max.value
-		resource.random_rot_x = rotx_slider.value
-		resource.random_rot_y = roty_slider.value
-		resource.random_rot_z = rotz_slider.value
-		resource.random_scale_min = scale_spin_box_min.value
-		resource.random_scale_min = scale_spin_box_min.value
-
-		# Create directories
-		var path_to_collection_folder = dock.current_collection.resource_path.get_basename()
-		_create_directory_if_not_exists(path_to_collection_folder)
-
-		#region Create icon
-
-		# Add packed_scene to studio scene
-		var subject: Node3D = instance
-		icon_studio.add_child(subject)
-		subject.owner = icon_studio
-		
-		var camera_root: Node3D = icon_studio.get_node("CameraRoot") as Node3D
-		camera_root.basis = Basis.IDENTITY
-		var studio_camera: Camera3D = icon_studio.get_node("CameraRoot/Yaw/Pitch/Camera3D") as Camera3D
-
-		# Center item in portrait frame
-		# Defaulting to 5 node child layers to get AABB
-		# Possible improvement : add parameter to UI
-		var node_depth = 5
-		var aabb = await _get_merged_aabb(subject, node_depth)
-		var avg_normal = _avg_dir(subject)
-		if avg_normal.length_squared() > 0.01:
-			camera_root.basis = Basis.looking_at(avg_normal)
-			camera_root.basis = camera_root.basis.rotated(Vector3.RIGHT, deg_to_rad(30))
-		else:
-			camera_root.basis = camera_root.basis.rotated(Vector3.RIGHT, deg_to_rad(-30))
-		camera_root.basis = camera_root.basis.rotated(Vector3.UP, deg_to_rad(-30))
-		camera_root.rotation = Vector3(camera_root.rotation.x, camera_root.rotation.y, 0)
-		print("[Create Scene Builder Items] Subject AABB: ", aabb)
-		var center = aabb.get_center()
-		print("[Create Scene Builder Items] Subject center: ", center)
-		subject.position -= center
-		# Using 120% of longest axis for cases where the subject gets too close to camera
-		studio_camera.position = Vector3(0, 0, aabb.get_longest_axis_size()*1.2)
-		studio_camera.size = aabb.get_longest_axis_size()
-		await get_tree().process_frame
-		await RenderingServer.frame_post_draw
+	# Center item in portrait frame
+	# Defaulting to 5 node child layers to get AABB
+	# Possible improvement : add parameter to UI
+	var node_depth = 5
+	var aabb = await _get_merged_aabb(subject, node_depth)
+	var avg_normal = _avg_dir(subject)
+	if avg_normal.length_squared() > 0.01:
+		camera_root.basis = Basis.looking_at(avg_normal)
+		camera_root.basis = camera_root.basis.rotated(Vector3.RIGHT, deg_to_rad(30))
+	else:
+		camera_root.basis = camera_root.basis.rotated(Vector3.RIGHT, deg_to_rad(-30))
+	camera_root.basis = camera_root.basis.rotated(Vector3.UP, deg_to_rad(-30))
+	camera_root.rotation = Vector3(camera_root.rotation.x, camera_root.rotation.y, 0)
+	print("[Create Scene Builder Items] Subject AABB: ", aabb)
+	var center = aabb.get_center()
+	print("[Create Scene Builder Items] Subject center: ", center)
+	subject.position -= center
+	# Using 120% of longest axis for cases where the subject gets too close to camera
+	studio_camera.position = Vector3(0, 0, aabb.get_longest_axis_size()*1.2)
+	studio_camera.size = aabb.get_longest_axis_size()
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
 
 
-		var viewport_tex: Texture = icon_studio.get_texture()
-		var img: Image = viewport_tex.get_image()
-		img.generate_mipmaps()
-		img.compress(Image.COMPRESS_S3TC, Image.COMPRESS_SOURCE_SRGB)
-		var tex: Texture = ImageTexture.create_from_image(img)
+	var viewport_tex: Texture = icon_studio.get_texture()
+	var img: Image = viewport_tex.get_image()
+	img.generate_mipmaps()
+	img.compress(Image.COMPRESS_S3TC, Image.COMPRESS_SOURCE_SRGB)
+	var tex: Texture = ImageTexture.create_from_image(img)
 
-		resource.texture = tex
+	resource.texture = tex
 
-		await get_tree().process_frame
-		subject.free()
+	await get_tree().process_frame
+	subject.free()
 
-		#endregion
+	#endregion
 
-		if auto_snapx.button_pressed:
-			resource.snap_to_grid.x = aabb.size.x
-		if auto_snapy.button_pressed:
-			resource.snap_to_grid.y = aabb.size.y
-		if auto_snapz.button_pressed:
-			resource.snap_to_grid.z = aabb.size.z
-		if autox_offset.button_pressed:
-			resource.snap_offset.x = -aabb.get_center().x
-		if autoy_offset.button_pressed:
-			resource.snap_offset.y = -aabb.get_center().y
-		if autoz_offset.button_pressed:
-			resource.snap_offset.z = -aabb.get_center().z
-		ResourceSaver.save(resource, save_path)
-		var fs = EditorInterface.get_resource_filesystem()
-		fs.update_file(save_path)
-		fs.scan()
-		
-		print("[Create Scene Builder Items] Resource saved: " + save_path)
+	if auto_snapx.button_pressed:
+		resource.snap_to_grid.x = aabb.size.x
+	if auto_snapy.button_pressed:
+		resource.snap_to_grid.y = aabb.size.y
+	if auto_snapz.button_pressed:
+		resource.snap_to_grid.z = aabb.size.z
+	if autox_offset.button_pressed:
+		resource.snap_offset.x = -aabb.get_center().x
+	if autoy_offset.button_pressed:
+		resource.snap_offset.y = -aabb.get_center().y
+	if autoz_offset.button_pressed:
+		resource.snap_offset.z = -aabb.get_center().z
+	ResourceSaver.save(resource, save_path)
+	var fs = EditorInterface.get_resource_filesystem()
+	fs.update_file(save_path)
+	fs.scan()
+	
+	print("[Create Scene Builder Items] Resource saved: " + save_path)
 
 func _avg_dir(node: Node)->Vector3:
 	var total = Vector3.FORWARD*0.001
