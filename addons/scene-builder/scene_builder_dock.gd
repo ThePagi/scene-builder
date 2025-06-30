@@ -97,6 +97,8 @@ var position_offset: Vector3
 var random_offset_y: float = 0
 var preview_temp_parent: Node3D # Used as a parent to the preview item
 
+var parents_in_scenes: Dictionary = {}
+var prev_root: Node = null
 var prev_parent: Node3D = null
 
 func snap(pos: Vector3) -> Vector3:
@@ -104,35 +106,49 @@ func snap(pos: Vector3) -> Vector3:
 func snap_rot(euler: Vector3) -> Vector3:
 	return euler.snapped(Vector3.ONE*deg_to_rad(items[selected_item_id].snap_rotation))
 func selected_parent()->Node3D:
-	var sel = EditorInterface.get_selection().get_selected_nodes()
-	if placement_mode_enabled and %ForceRootNode.button_pressed:
+	var root = EditorInterface.get_edited_scene_root()
+	if %ForceRootNode.button_pressed or root not in parents_in_scenes:
+		if root is not Node3D:
+			btn_parent_node_selector.set_node_info("A Node3D must be selected or a scene root!", null)
+			return null
 		EditorInterface.get_selection().clear()
 		EditorInterface.get_selection().add_node(EditorInterface.get_edited_scene_root())
-		sel = EditorInterface.get_selection().get_selected_nodes()
-	if len(sel) == 1:
-		if sel[0] is not Node3D:
-			if btn_parent_node_selector:
-				btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
-			return null
-		viewport = EditorInterface.get_editor_viewport_3d()
-		world3d = viewport.find_world_3d()
-		physics_space = world3d.direct_space_state
-		camera = viewport.get_camera_3d()
-
-		var node = sel[0]
-		var node_name := node.get_class().split(".")[-1]
-		var base = plugin.get_editor_interface().get_base_control()
-		var node_icon := base.get_theme_icon(node_name, "EditorIcons")
-
-		if node_icon == base.get_theme_icon("invalid icon", "EditorIcons"):
-			node_icon = base.get_theme_icon("Node", "EditorIcons")
-		if btn_parent_node_selector:
-			btn_parent_node_selector.set_node_info(node.name, node_icon)
-		return node
 	else:
-		if btn_parent_node_selector:
-			btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
-		return null
+		EditorInterface.get_selection().clear()
+		EditorInterface.get_selection().add_node(parents_in_scenes[root])
+	viewport = EditorInterface.get_editor_viewport_3d()
+	world3d = viewport.find_world_3d()
+	physics_space = world3d.direct_space_state
+	camera = viewport.get_camera_3d()
+
+	var node: Node3D = EditorInterface.get_selection().get_selected_nodes()[0]
+	prev_parent = node
+	var node_name := node.get_class().split(".")[-1]
+	var base = plugin.get_editor_interface().get_base_control()
+	var node_icon := base.get_theme_icon(node_name, "EditorIcons")
+
+	if node_icon == base.get_theme_icon("invalid icon", "EditorIcons"):
+		node_icon = base.get_theme_icon("Node", "EditorIcons")
+	if btn_parent_node_selector:
+		btn_parent_node_selector.set_node_info(node.name, node_icon)
+	return node
+
+func on_parent_selected(path: NodePath):
+	if not path:
+		btn_parent_node_selector.set_node_info("Select a Node3D!", null)
+		return
+	if %ForceRootNode.button_pressed:
+		btn_parent_node_selector.set_node_info("Force root node enabled!", null)
+		return
+	var root = EditorInterface.get_edited_scene_root()
+	var new_parent = root.get_node(path)
+	if new_parent and new_parent is not Node3D and btn_parent_node_selector:
+		btn_parent_node_selector.set_node_info("A Node3D must be selected!", null)
+		return
+	if new_parent and (new_parent == root or new_parent.owner == root):
+		parents_in_scenes[root] = new_parent		
+	selected_parent()
+	
 
 func init(p: EditorPlugin, cmd: SceneBuilderCommands, cfg: SceneBuilderConfig):
 	plugin = p
@@ -171,7 +187,7 @@ func _enter_tree() -> void:
 	btn_surface_normal_z = %Orientation/Z
 
 	btn_parent_node_selector = %ParentNodeSelector
-
+	btn_parent_node_selector.path_selected.connect(on_parent_selected)
 	#
 	btn_group_surface_orientation = ButtonGroup.new()
 	btn_surface_normal_x.button_group = btn_group_surface_orientation
@@ -217,11 +233,10 @@ func resize_icons(value: float):
 
 
 func _process(_delta: float) -> void:
-	var sel_parent = selected_parent()
-	if prev_parent != sel_parent:
+	var curr_root = EditorInterface.get_edited_scene_root()
+	if prev_root != curr_root:
 		end_placement_mode()
-		if sel_parent:
-			prev_parent = sel_parent
+		prev_root = curr_root
 	# Update preview item position
 	if placement_mode_enabled and not is_transform_mode_enabled():
 		populate_preview_instance_rid_array(preview_instance)
@@ -548,8 +563,7 @@ func create_preview_instance() -> void:
 
 	# Instantiating a node automatically selects it, which is annoying.
 	# Let's re-select scene_root instead,
-	EditorInterface.get_selection().clear()
-	EditorInterface.get_selection().add_node(preview_temp_parent.get_parent())
+	selected_parent()
 
 func end_placement_mode() -> void:
 	clear_preview_instance()
