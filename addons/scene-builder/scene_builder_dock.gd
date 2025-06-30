@@ -97,7 +97,7 @@ var position_offset: Vector3
 var random_offset_y: float = 0
 var preview_temp_parent: Node3D # Used as a parent to the preview item
 
-var parents_in_scenes: Dictionary = {}
+var parents_in_scenes: Dictionary[Node, Node] = {}
 var prev_root: Node = null
 var prev_parent: Node3D = null
 
@@ -236,6 +236,7 @@ func _process(_delta: float) -> void:
 	var curr_root = EditorInterface.get_edited_scene_root()
 	if prev_root != curr_root:
 		end_placement_mode()
+		selected_parent()
 		prev_root = curr_root
 	# Update preview item position
 	if placement_mode_enabled and not is_transform_mode_enabled():
